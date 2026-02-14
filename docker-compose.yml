@@ -1,0 +1,30 @@
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - CLIENT_DIR=/app/packages/client/dist
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: hafte_kasif
+      POSTGRES_USER: hk
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./deploy/init.sql:/docker-entrypoint-initdb.d/init.sql
+    secrets:
+      - db_password
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+
+secrets:
+  db_password:
+    file: ./deploy/.db_password

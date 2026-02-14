@@ -1,0 +1,24 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, #root {
+  height: 100%;
+  overscroll-behavior: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Card suit colors */
+.suit-hearts, .suit-diamonds { color: #ef4444; }
+.suit-clubs, .suit-spades { color: #1e293b; }
+
+/* Smooth scrolling for hand */
+.hand-scroll {
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+}
+
+.hand-scroll > * {
+  scroll-snap-align: center;
+}

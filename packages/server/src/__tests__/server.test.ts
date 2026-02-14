@@ -1,0 +1,323 @@
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { WebSocketServer, WebSocket } from 'ws';
+import { createServer, type Server } from 'http';
+import { ConnectionManager } from '../rooms/ConnectionManager.js';
+import { RoomManager } from '../rooms/RoomManager.js';
+import { MessageHandler } from '../rooms/MessageHandler.js';
+import type { ServerMessage, ClientMessage } from '@hafte-kasif/shared';
+
+let httpServer: Server;
+let wss: WebSocketServer;
+let connections: ConnectionManager;
+let rooms: RoomManager;
+let handler: MessageHandler;
+let port: number;
+
+function createTestServer(): Promise<number> {
+  return new Promise((resolve) => {
+    connections = new ConnectionManager();
+    rooms = new RoomManager();
+    handler = new MessageHandler(connections, rooms);
+
+    httpServer = createServer();
+    wss = new WebSocketServer({ server: httpServer, path: '/ws' });
+
+    wss.on('connection', (ws) => {
+      ws.on('message', (data) => {
+        handler.handleMessage(ws, data.toString());
+      });
+      ws.on('close', () => {
+        connections.remove(ws);
+      });
+    });
+
+    httpServer.listen(0, () => {
+      const addr = httpServer.address();
+      resolve(typeof addr === 'object' ? addr!.port : 0);
+    });
+  });
+}
+
+function createClient(p: number): Promise<{ ws: WebSocket; messages: ServerMessage[] }> {
+  return new Promise((resolve, reject) => {
+    const ws = new WebSocket(`ws://localhost:${p}/ws`);
+    const messages: ServerMessage[] = [];
+
+    ws.on('message', (data) => {
+      messages.push(JSON.parse(data.toString()));
+    });
+
+    ws.on('open', () => resolve({ ws, messages }));
+    ws.on('error', reject);
+  });
+}
+
+function sendMsg(ws: WebSocket, msg: ClientMessage): void {
+  ws.send(JSON.stringify(msg));
+}
+
+function waitForMessage(
+  messages: ServerMessage[],
+  type: string,
+  startIdx: number = 0,
+  timeoutMs: number = 2000,
+): Promise<ServerMessage> {
+  return new Promise((resolve, reject) => {
+    const start = Date.now();
+    const check = () => {
+      for (let i = startIdx; i < messages.length; i++) {
+        if (messages[i].type === type) {
+          return resolve(messages[i]);
+        }
+      }
+      if (Date.now() - start > timeoutMs) {
+        return reject(new Error(`Timeout waiting for ${type}. Got: ${messages.map(m => m.type).join(', ')}`));
+      }
+      setTimeout(check, 10);
+    };
+    check();
+  });
+}
+
+describe('Server Integration', () => {
+  beforeAll(async () => {
+    port = await createTestServer();
+  });
+
+  afterAll(() => {
+    wss.close();
+    httpServer.close();
+  });
+
+  it('should create a room and receive room code', async () => {
+    const { ws, messages } = await createClient(port);
+
+    sendMsg(ws, { type: 'CREATE_ROOM', playerName: 'Alice', mode: 'standard' });
+    const msg = await waitForMessage(messages, 'ROOM_CREATED');
+
+    expect(msg.type).toBe('ROOM_CREATED');
+    if (msg.type === 'ROOM_CREATED') {
+      expect(msg.roomCode).toHaveLength(4);
+      expect(msg.playerId).toBeTruthy();
+    }
+
+    ws.close();
+  });
+
+  it('should allow joining an existing room', async () => {
+    const host = await createClient(port);
+    sendMsg(host.ws, { type: 'CREATE_ROOM', playerName: 'Alice', mode: 'standard' });
+    const created = await waitForMessage(host.messages, 'ROOM_CREATED') as any;
+
+    const joiner = await createClient(port);
+    sendMsg(joiner.ws, { type: 'JOIN_ROOM', roomCode: created.roomCode, playerName: 'Bob' });
+    const joined = await waitForMessage(joiner.messages, 'ROOM_JOINED');
+
+    expect(joined.type).toBe('ROOM_JOINED');
+    if (joined.type === 'ROOM_JOINED') {
+      expect(joined.players).toHaveLength(2);
+    }
+
+    host.ws.close();
+    joiner.ws.close();
+  });
+
+  it('should reject joining a nonexistent room', async () => {
+    const { ws, messages } = await createClient(port);
+
+    sendMsg(ws, { type: 'JOIN_ROOM', roomCode: 'ZZZZ', playerName: 'Bob' });
+    const msg = await waitForMessage(messages, 'MOVE_REJECTED');
+
+    expect(msg.type).toBe('MOVE_REJECTED');
+    ws.close();
+  });
+
+  it('should play a full game with 3 players', async () => {
+    // Create room
+    const host = await createClient(port);
+    sendMsg(host.ws, { type: 'CREATE_ROOM', playerName: 'Alice', mode: 'standard' });
+    const created = await waitForMessage(host.messages, 'ROOM_CREATED') as any;
+    const roomCode = created.roomCode;
+
+    // Join 2 more players
+    const p2 = await createClient(port);
+    sendMsg(p2.ws, { type: 'JOIN_ROOM', roomCode, playerName: 'Bob' });
+    await waitForMessage(p2.messages, 'ROOM_JOINED');
+
+    const p3 = await createClient(port);
+    sendMsg(p3.ws, { type: 'JOIN_ROOM', roomCode, playerName: 'Charlie' });
+    await waitForMessage(p3.messages, 'ROOM_JOINED');
+
+    // Start game
+    sendMsg(host.ws, { type: 'START_GAME', cardsPerPlayer: 2 });
+
+    // Wait for all players to receive game state
+    const hostState = await waitForMessage(host.messages, 'GAME_STATE') as any;
+    const p2State = await waitForMessage(p2.messages, 'GAME_STATE') as any;
+    const p3State = await waitForMessage(p3.messages, 'GAME_STATE') as any;
+
+    expect(hostState.state.myHand.length).toBeGreaterThanOrEqual(2);
+    expect(p2State.state.myHand.length).toBeGreaterThanOrEqual(2);
+    expect(p3State.state.myHand.length).toBeGreaterThanOrEqual(2);
+
+    // Verify opponent card counts are hidden
+    expect(hostState.state.opponents[0].cardCount).toBeGreaterThanOrEqual(2);
+    // Opponent hands should not contain actual cards (only count)
+    expect(hostState.state.opponents[0]).not.toHaveProperty('hand');
+
+    // Identify current player
+    const allClients = [
+      { ...host, playerId: created.playerId, state: hostState.state },
+      { ...p2, playerId: (await waitForMessage(p2.messages, 'ROOM_JOINED', 0) as any).playerId, state: p2State.state },
+      { ...p3, playerId: (await waitForMessage(p3.messages, 'ROOM_JOINED', 0) as any).playerId, state: p3State.state },
+    ];
+
+    // Play a turn: current player draws (always valid)
+    const currentPlayerId = hostState.state.currentPlayerId;
+    const currentClient = allClients.find(c => c.playerId === currentPlayerId);
+    if (currentClient) {
+      const msgCountBefore = currentClient.messages.length;
+      sendMsg(currentClient.ws, {
+        type: 'PLAYER_ACTION',
+        action: { type: 'DRAW_CARD' },
+      });
+
+      // Should receive updated game state
+      const updated = await waitForMessage(currentClient.messages, 'GAME_STATE', msgCountBefore);
+      expect(updated.type).toBe('GAME_STATE');
+    }
+
+    host.ws.close();
+    p2.ws.close();
+    p3.ws.close();
+  });
+
+  it('should reject non-host starting the game', async () => {
+    const host = await createClient(port);
+    sendMsg(host.ws, { type: 'CREATE_ROOM', playerName: 'Alice', mode: 'standard' });
+    const created = await waitForMessage(host.messages, 'ROOM_CREATED') as any;
+
+    const p2 = await createClient(port);
+    sendMsg(p2.ws, { type: 'JOIN_ROOM', roomCode: created.roomCode, playerName: 'Bob' });
+    await waitForMessage(p2.messages, 'ROOM_JOINED');
+
+    const p3 = await createClient(port);
+    sendMsg(p3.ws, { type: 'JOIN_ROOM', roomCode: created.roomCode, playerName: 'Charlie' });
+    await waitForMessage(p3.messages, 'ROOM_JOINED');
+
+    // Non-host tries to start
+    sendMsg(p2.ws, { type: 'START_GAME', cardsPerPlayer: 7 });
+    const rejected = await waitForMessage(p2.messages, 'MOVE_REJECTED');
+    expect(rejected.type).toBe('MOVE_REJECTED');
+
+    host.ws.close();
+    p2.ws.close();
+    p3.ws.close();
+  });
+
+  it('should reject starting with fewer than 3 players', async () => {
+    const host = await createClient(port);
+    sendMsg(host.ws, { type: 'CREATE_ROOM', playerName: 'Alice', mode: 'standard' });
+    await waitForMessage(host.messages, 'ROOM_CREATED');
+
+    const p2 = await createClient(port);
+    sendMsg(p2.ws, { type: 'JOIN_ROOM', roomCode: (host.messages[0] as any).roomCode, playerName: 'Bob' });
+    await waitForMessage(p2.messages, 'ROOM_JOINED');
+
+    // Only 2 players — try to start
+    const msgCount = host.messages.length;
+    sendMsg(host.ws, { type: 'START_GAME', cardsPerPlayer: 7 });
+    const rejected = await waitForMessage(host.messages, 'MOVE_REJECTED', msgCount);
+    expect(rejected.type).toBe('MOVE_REJECTED');
+
+    host.ws.close();
+    p2.ws.close();
+  });
+});
+
+describe('RoomManager unit tests', () => {
+  it('should generate unique 4-char room codes', () => {
+    const rm = new RoomManager();
+    const codes = new Set<string>();
+    for (let i = 0; i < 50; i++) {
+      const room = rm.createRoom(`host${i}`, `Host${i}`, 'standard');
+      expect(room.code).toHaveLength(4);
+      expect(codes.has(room.code)).toBe(false);
+      codes.add(room.code);
+    }
+  });
+
+  it('should not allow more than 4 players', () => {
+    const rm = new RoomManager();
+    const room = rm.createRoom('h', 'Host', 'standard');
+    rm.joinRoom(room.code, 'p2', 'P2');
+    rm.joinRoom(room.code, 'p3', 'P3');
+    rm.joinRoom(room.code, 'p4', 'P4');
+    const result = rm.joinRoom(room.code, 'p5', 'P5');
+    expect(result).toBeNull();
+  });
+
+  it('should not allow joining after game starts', () => {
+    const rm = new RoomManager();
+    const room = rm.createRoom('h', 'Host', 'standard');
+    rm.joinRoom(room.code, 'p2', 'P2');
+    rm.joinRoom(room.code, 'p3', 'P3');
+    rm.startGame(room.code, 7);
+    const result = rm.joinRoom(room.code, 'p4', 'P4');
+    expect(result).toBeNull();
+  });
+
+  it('should produce filtered player views', () => {
+    const rm = new RoomManager();
+    const room = rm.createRoom('h', 'Host', 'standard');
+    rm.joinRoom(room.code, 'p2', 'P2');
+    rm.joinRoom(room.code, 'p3', 'P3');
+    const state = rm.startGame(room.code, 3);
+    expect(state).not.toBeNull();
+
+    if (state) {
+      const view = rm.getPlayerView(state, 'h');
+      expect(view.myHand.length).toBeGreaterThan(0);
+      expect(view.opponents).toHaveLength(2);
+      // Opponents should not leak hand cards
+      for (const opp of view.opponents) {
+        expect(opp.cardCount).toBeGreaterThan(0);
+        expect(opp).not.toHaveProperty('hand');
+      }
+    }
+  });
+});
+
+describe('ConnectionManager unit tests', () => {
+  it('should track connections', () => {
+    const cm = new ConnectionManager();
+    const fakeWs = { readyState: 1, close: () => {}, send: () => {} } as any;
+
+    cm.add(fakeWs, 'p1', 'Alice');
+    expect(cm.isConnected('p1')).toBe(true);
+    expect(cm.getPlayerIdByWs(fakeWs)).toBe('p1');
+  });
+
+  it('should handle disconnection and grace period', () => {
+    const cm = new ConnectionManager();
+    const fakeWs = { readyState: 1, close: () => {}, send: () => {} } as any;
+
+    cm.add(fakeWs, 'p1', 'Alice');
+    cm.remove(fakeWs);
+    expect(cm.isConnected('p1')).toBe(false);
+    expect(cm.isWithinGracePeriod('p1')).toBe(true);
+  });
+
+  it('should allow reconnection within grace period', () => {
+    const cm = new ConnectionManager();
+    const ws1 = { readyState: 1, close: () => {}, send: () => {} } as any;
+    const ws2 = { readyState: 1, close: () => {}, send: () => {} } as any;
+
+    cm.add(ws1, 'p1', 'Alice');
+    cm.remove(ws1);
+    const reconnected = cm.reconnect(ws2, 'p1');
+    expect(reconnected).toBe(true);
+    expect(cm.isConnected('p1')).toBe(true);
+    expect(cm.getPlayerIdByWs(ws2)).toBe('p1');
+  });
+});

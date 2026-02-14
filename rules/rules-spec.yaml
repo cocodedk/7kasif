@@ -1,0 +1,213 @@
+game:
+  name: Hafte Kasif
+  alternate_name: Bisheori
+  origin: Persian-Danish card game
+  meaning: "Hafte = Seven, Kasif = Dirty (Arabic/Persian); Bisheori = title given to the loser (dumb in Persian)"
+
+players:
+  min: 3
+  max: 4
+
+deck:
+  type: standard
+  cards: 52
+  jokers: false
+  suits: [hearts, diamonds, clubs, spades]
+  values: [2, 3, 4, 5, 6, 7, 8, 9, 10, jack, queen, king, ace]
+
+dealing:
+  cards_per_player:
+    min: 2
+    max: 7
+    decided_by: dealer
+    rule: "All players receive the same number of cards"
+  initial_discard: "Dealer flips top card from remaining deck face-up"
+  initial_card_action: "The flipped card's action applies as if the dealer played it"
+
+turn_flow:
+  initial_direction: clockwise  # right of the dealer
+  actions_per_turn: 1  # except Ace chains
+  turn_options:
+    - play_matching_card  # same suit or same value
+    - draw_card  # mandatory if no playable card; optional otherwise
+  draw_rules:
+    when_no_playable_card: must_draw
+    after_drawing: "Player CAN play a card (drawn or from hand). To end turn without playing, player must announce and pass."
+  pass_rules:
+    rule: "A player must explicitly announce they are passing their turn"
+    when: "After drawing, if the player does not want to play a card"
+  matching:
+    same_suit: true  # play any card of the same suit as top card
+    same_value: true  # play same value from any suit
+
+card_values_for_scoring:
+  ace: 14
+  king: 13
+  queen: 12
+  jack: 11  # also multiplies total hand value by 2 per jack
+  "10": 10
+  "9": 9
+  "8": 8
+  "7": 7
+  "6": 6
+  "5": 5
+  "4": 4
+  "3": 3
+  "2": 2
+
+action_cards:
+  ace:
+    effect: "Player must play another card or draw"
+    details:
+      - "After playing an Ace, player must play another card on top"
+      - "Player may optionally draw a card (strategic choice) before playing"
+      - "After drawing, player can play a card (drawn or from hand)"
+      - "If player cannot or does not want to play after drawing, they must announce and pass"
+      - "Multiple Aces can be chained — play Ace, then another Ace, etc."
+      - "Chain must end with a non-Ace card matching the suit of the last Ace, or a draw"
+    chain: true
+
+  "2":
+    effect: "Give a card to the next player"
+    details:
+      - "Player must give one card from their hand to the next player in line"
+      - "Player chooses which card to give"
+      - "If 2 is the very last card in hand (no card to give), player wins with 3 points"
+      - "If player plays 2 and gives a card leaving them with 0 cards, only 1 point"
+
+  "3":
+    effect: "Previous player draws a card"
+    details:
+      - "The player who played before the current player must draw a card from the pile"
+
+  "6":
+    effect: "Two players next in line draw a card"
+    details:
+      - "The next two players in turn order must each draw one card from the pile"
+
+  "7":
+    effect: "Next player draws 2 cards (chain reaction starter)"
+    details:
+      - "Next player must draw 2 cards OR counter with 7, 8 (same suit), or 10 (same suit)"
+      - "Countering with 7 adds 2 more cards to the penalty"
+      - "Countering with 8 (same suit): choice — redirect penalty to player 2 ahead, OR add 3 to penalty"
+      - "Countering with 10 (same suit): reverses chain direction, adds 0 to penalty"
+      - "Chain continues until a player cannot or does not counter"
+    chain_reaction: true
+    chain_participants: ["7", "8", "10"]
+    chain_suit_rule:
+      standard: "8 and 10 must match suit of the 7; any 7 can be played"
+      freestyle: "Any 7, 8, or 10 can participate regardless of suit"
+
+  "8":
+    effect: "Skip next player's turn"
+    details:
+      - "Next player in line is skipped"
+      - "In chain reaction: see 7's chain rules"
+
+  "9_of_diamonds":
+    effect: "All other players draw one card"
+    details:
+      - "Only the 9 of diamonds has this effect"
+      - "All other 9s are normal cards with no effect"
+
+  "10":
+    effect: "Reverse direction of play"
+    details:
+      - "Direction switches from clockwise to counter-clockwise or vice versa"
+      - "In chain reaction: see 7's chain rules"
+
+  jack:
+    effect: "Change the house (suit) — wild card"
+    details:
+      - "Can be played on any card regardless of suit or value"
+      - "Player chooses the new house (suit) that the next player must follow"
+      - "Cannot participate in 7-8-10 chain reactions"
+
+  queen:
+    effect: "Next player reveals a card"
+    details:
+      - "Next player must reveal one card from their hand (player chooses which)"
+      - "The revealed card cannot be played on that turn"
+      - "The revealed card stays visible to all players until it is eventually played"
+      - "If next player has only 1 card, they reveal it and must draw (but can play the drawn card if it matches)"
+
+  king:
+    effect: "Skip next player and they draw 1 card (saw chain)"
+    details:
+      - "Next player is skipped AND must draw 1 card"
+      - "Skipped player cannot counter"
+      - "Kings chain with other Kings (called a 'saw')"
+      - "The player whose turn it is (not the skipped player) can continue the saw with another King"
+      - "Any King can continue the saw regardless of suit"
+      - "Saw continues until all 4 Kings are played or the active player has no King"
+
+normal_cards:
+  "4": "No special effect"
+  "5": "No special effect (special rules exist for 5+ players, out of scope)"
+  "9": "No special effect (except 9 of diamonds)"
+
+winning:
+  condition: "Play your last card (following all rules)"
+  restrictions: "None — any card can be the finishing card as long as rules are respected"
+  one_card_announcement:
+    rule: "When a player is down to 1 card, they must announce it loudly"
+    penalty: "If other players notice the player did not announce, they can impose a 1-card draw penalty"
+    timing: "Must announce as soon as they reach 1 card"
+  scoring:
+    normal_finish: 1  # any card except 2 or Jack
+    jack_finish: 2
+    two_finish_empty_hand: 3  # 2 is the very last card, nothing to give
+    two_finish_with_give: 1  # played 2, gave a card, now empty
+    ace_chain_finish: 4  # chain 4 Aces + finishing card, fills a new row
+
+losing:
+  determination: "Player with highest hand value (card_values_for_scoring)"
+  jack_multiplier: "Each Jack in hand multiplies the total hand value by 2"
+  tie_for_highest:
+    rule: "If two or more players tie for highest hand value, the result REVERSES"
+    effect: "Winner becomes loser, tied losers become winners"
+    points: "Same point values, just flipped"
+
+scoring_system:
+  description: "Points tracked in a table with rows of 4 cells per player"
+  cells_per_row: 4
+  markers:
+    win: "I"
+    loss: "X"
+  row_rules:
+    - "Wins (I) and losses (X) share the same row"
+    - "Points fill cells left to right in the current row"
+    - "When a row is full (4 cells), a new row starts automatically"
+    - "Overflow: if points exceed remaining cells in current row, they spill into the next row"
+  row_completion:
+    four_wins: "+1 point (plus cluster)"
+    four_losses: "-1 point (minus cluster)"
+    mixed: "0 points (row is wasted)"
+  special:
+    ace_chain_4_points: "Fills an entirely new row with 4 I's (guaranteed +1 point), leaving current row untouched"
+  final_score: "Count of completed rows with all I's minus count of completed rows with all X's"
+
+draw_pile:
+  empty_rule: "When draw pile runs out, discard pile is shuffled and becomes the new draw pile"
+
+game_modes:
+  standard:
+    description: "Default rules — chain reaction cards (8, 10) must match suit of the 7"
+  freestyle:
+    description: "Any 7, 8, or 10 can participate in chain reactions regardless of suit"
+
+first_card_rules:
+  description: "The dealer is treated as the player who played the flipped card"
+  examples:
+    ace: "Dealer must play a card on top (Ace rules apply)"
+    "2": "Dealer gives a card to next player"
+    "3": "Player before dealer draws a card"
+    "6": "Next two players draw a card each"
+    "7": "Next player must draw 2 or counter"
+    "8": "Next player is skipped"
+    "9_of_diamonds": "All other players draw 1 card"
+    "10": "Direction reverses"
+    jack: "Dealer chooses the new house (suit)"
+    queen: "Next player reveals a card"
+    king: "Next player is skipped and draws 1"

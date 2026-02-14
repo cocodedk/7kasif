@@ -1,0 +1,19 @@
+{
+  "name": "hafte-kasif",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "packages/shared",
+    "packages/server",
+    "packages/client"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces",
+    "test": "npm run test --workspaces --if-present",
+    "dev:server": "npm run dev -w packages/server",
+    "dev:client": "npm run dev -w packages/client"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
+}

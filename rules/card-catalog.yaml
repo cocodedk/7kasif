@@ -1,0 +1,184 @@
+cards:
+  ace:
+    values: [ace_hearts, ace_diamonds, ace_clubs, ace_spades]
+    type: action
+    hand_value: 14
+    effect: chain_play
+    description: "Play another card or draw. Multiple Aces can be chained."
+    on_play:
+      - "Player must play another card on top of the Ace"
+      - "Player may optionally draw a card before playing (strategic choice)"
+      - "After drawing, player can play a card (drawn or from hand)"
+      - "If player cannot or does not want to play, they must announce and pass"
+      - "If playing another Ace, repeat this process"
+      - "Chain must end with a card matching the suit of the last Ace, or a pass"
+    finish_bonus: 1  # standard finish points
+    special_finish:
+      condition: "Chain 4 Aces + a finishing card"
+      points: 4
+      scoring_rule: "4 points fill a brand new row (guaranteed +1 cluster), current row untouched"
+
+  "2":
+    values: [2_hearts, 2_diamonds, 2_clubs, 2_spades]
+    type: action
+    hand_value: 2
+    effect: give_card
+    description: "Give a card from your hand to the next player."
+    on_play:
+      - "Choose a card from your hand and give it to the next player in turn order"
+    finish_bonus:
+      as_last_card_no_give: 3  # 2 is the very last card, no card to give
+      as_last_card_after_give: 1  # played 2, gave a card, now empty
+
+  "3":
+    values: [3_hearts, 3_diamonds, 3_clubs, 3_spades]
+    type: action
+    hand_value: 3
+    effect: previous_player_draws
+    description: "Previous player (who played before you) draws a card."
+    on_play:
+      - "The player whose turn was immediately before the current player draws 1 card from the pile"
+    finish_bonus: 1
+
+  "4":
+    values: [4_hearts, 4_diamonds, 4_clubs, 4_spades]
+    type: normal
+    hand_value: 4
+    effect: none
+    description: "No special effect."
+    finish_bonus: 1
+
+  "5":
+    values: [5_hearts, 5_diamonds, 5_clubs, 5_spades]
+    type: normal
+    hand_value: 5
+    effect: none
+    description: "No special effect. (In 5+ player games, forces 2 previous players to draw — out of scope.)"
+    finish_bonus: 1
+
+  "6":
+    values: [6_hearts, 6_diamonds, 6_clubs, 6_spades]
+    type: action
+    hand_value: 6
+    effect: two_players_draw
+    description: "Next two players in line each draw one card."
+    on_play:
+      - "The next two players in turn order each draw 1 card from the pile"
+      - "Their turns are NOT skipped — they still play normally"
+    finish_bonus: 1
+
+  "7":
+    values: [7_hearts, 7_diamonds, 7_clubs, 7_spades]
+    type: action
+    hand_value: 7
+    effect: chain_reaction_starter
+    description: "Next player draws 2 cards. Triggers chain reaction (7-8-10)."
+    on_play:
+      - "Next player must draw 2 cards OR counter"
+    chain_reaction:
+      can_start: true
+      adds_to_penalty: 2
+      counter_options:
+        - card: "7"
+          suit_rule: "any"
+          effect: "Adds 2 to penalty, passes to next player"
+        - card: "8"
+          suit_rule: "same suit as the 7 (standard) / any suit (freestyle)"
+          effect: "Choice: redirect penalty to player 2 ahead, OR add 3 to penalty"
+        - card: "10"
+          suit_rule: "same suit as the 7 (standard) / any suit (freestyle)"
+          effect: "Reverses chain direction, adds 0 to penalty"
+    finish_bonus: 1
+
+  "8":
+    values: [8_hearts, 8_diamonds, 8_clubs, 8_spades]
+    type: action
+    hand_value: 8
+    effect: skip_next
+    description: "Skip the next player's turn."
+    on_play:
+      - "Next player in turn order is skipped"
+    chain_reaction:
+      can_start: false
+      role: "Counter in 7-8-10 chain"
+      adds_to_penalty: 3  # if choosing to add
+      redirect: true  # can redirect to player 2 positions ahead
+    finish_bonus: 1
+
+  "9":
+    values: [9_hearts, 9_clubs, 9_spades]
+    type: normal
+    hand_value: 9
+    effect: none
+    description: "No special effect."
+    finish_bonus: 1
+
+  "9_of_diamonds":
+    values: [9_diamonds]
+    type: action
+    hand_value: 9
+    effect: all_others_draw
+    description: "All other players draw one card each."
+    on_play:
+      - "Every other player in the game draws 1 card from the pile"
+    finish_bonus: 1
+
+  "10":
+    values: [10_hearts, 10_diamonds, 10_clubs, 10_spades]
+    type: action
+    hand_value: 10
+    effect: reverse_direction
+    description: "Reverse the direction of play."
+    on_play:
+      - "Direction switches: clockwise becomes counter-clockwise, or vice versa"
+    chain_reaction:
+      can_start: false
+      role: "Counter in 7-8-10 chain"
+      adds_to_penalty: 0
+      effect: "Reverses chain direction"
+    finish_bonus: 1
+
+  jack:
+    values: [jack_hearts, jack_diamonds, jack_clubs, jack_spades]
+    type: action
+    hand_value: 11
+    effect: change_house
+    description: "Wild card — can be played anytime. Player chooses the new house (suit)."
+    on_play:
+      - "Can be played on ANY card regardless of current house or value"
+      - "Player declares the new house (suit) for the next player"
+    chain_reaction:
+      can_participate: false
+    hand_penalty:
+      multiplier: 2
+      description: "Each Jack in hand at end of round multiplies total hand value by 2"
+    finish_bonus: 2
+
+  queen:
+    values: [queen_hearts, queen_diamonds, queen_clubs, queen_spades]
+    type: action
+    hand_value: 12
+    effect: reveal_card
+    description: "Next player must reveal a card from their hand."
+    on_play:
+      - "Next player chooses one card from their hand to reveal face-up"
+      - "Revealed card cannot be played on that player's current turn"
+      - "Revealed card remains visible to all players until it is played"
+      - "If next player has only 1 card: reveal it, must draw, can play drawn card if it matches"
+    finish_bonus: 1
+
+  king:
+    values: [king_hearts, king_diamonds, king_clubs, king_spades]
+    type: action
+    hand_value: 13
+    effect: skip_and_penalize
+    description: "Skip next player — they draw 1 card. Chains into a 'saw'."
+    on_play:
+      - "Next player is skipped and draws 1 card"
+      - "Skipped player cannot counter"
+    saw_chain:
+      description: "Kings chain with other Kings (called a 'saw')"
+      rule: "The active player (not skipped player) can play another King to continue"
+      suit_rule: "Any King can continue the saw regardless of suit"
+      max_chain: 4  # only 4 Kings in the deck
+    finish_bonus: 1
