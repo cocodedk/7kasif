@@ -34,7 +34,7 @@ services:
     environment:
       - NODE_ENV=development
       - WS_PROXY_TARGET=ws://server:3000
-      - VITE_DEV_PREVIEW=true
+      - VITE_DEV_PREVIEW=false
     command: npx vite --host 0.0.0.0 --port 5173
     working_dir: /app/packages/client
     restart: unless-stopped
