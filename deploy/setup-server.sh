@@ -56,6 +56,8 @@ if [ -d "$APP_DIR" ]; then
   echo "    $APP_DIR already exists, pulling latest..."
   cd "$APP_DIR" && sudo -u $DEPLOY_USER git pull origin main
 else
+  mkdir -p "$APP_DIR"
+  chown $DEPLOY_USER:$DEPLOY_USER "$APP_DIR"
   sudo -u $DEPLOY_USER git clone "$REPO_URL" "$APP_DIR"
 fi
 
