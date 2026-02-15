@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hafte Kasif - The Dirty Seven</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Hafte Kasif</h1>
+      <p class="subtitle">The Dirty Seven - Leaderboard</p>
+      <a href="https://7kasif.dk" class="play-btn">Play Now</a>
+    </header>
+
+    <main>
+      <section class="leaderboard-section">
+        <h2>All-Time Rankings</h2>
+        <div id="leaderboard-loading" class="loading">Loading leaderboard...</div>
+        <div id="leaderboard-error" class="error" hidden>Could not load leaderboard. Try again later.</div>
+        <table id="leaderboard-table" hidden>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Player</th>
+              <th>Sessions</th>
+              <th>Wins</th>
+              <th>Losses</th>
+              <th>+Clusters</th>
+              <th>-Clusters</th>
+              <th>Net</th>
+            </tr>
+          </thead>
+          <tbody id="leaderboard-body"></tbody>
+        </table>
+        <div id="leaderboard-empty" class="empty" hidden>No games played yet. Be the first!</div>
+      </section>
+
+      <section class="about-section">
+        <h2>About the Game</h2>
+        <p>
+          Hafte Kasif (The Dirty Seven) is a Turkish card game for 3-4 players.
+          Players take turns playing cards, using special card effects to outmaneuver opponents.
+          The goal is to empty your hand first — but watch out for reversals!
+        </p>
+        <h3>Special Cards</h3>
+        <ul>
+          <li><strong>7</strong> — Next player draws 2 (or chains with another 7)</li>
+          <li><strong>Ace</strong> — Play again! Chain 4 aces for a mega-bonus</li>
+          <li><strong>Jack</strong> — Change the suit, worth 2 points when finishing</li>
+          <li><strong>Queen</strong> — Reveal a random card from an opponent</li>
+          <li><strong>King</strong> — Reverse direction of play</li>
+          <li><strong>10</strong> — Skip the next player</li>
+          <li><strong>2</strong> — Give a card to the next player</li>
+        </ul>
+      </section>
+    </main>
+
+    <footer>
+      <p>&copy; 2026 Hafte Kasif &middot; <a href="https://github.com/cocodedk/7kasif">GitHub</a></p>
+    </footer>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
