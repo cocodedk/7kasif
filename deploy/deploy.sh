@@ -3,6 +3,9 @@ set -euo pipefail
 
 echo "Deploying Hafte Kasif..."
 
+# Update system packages
+sudo apt-get update -qq && sudo DEBIAN_FRONTEND=noninteractive apt-get upgrade -y -qq
+
 cd /opt/7kasif
 
 git pull origin main

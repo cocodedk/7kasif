@@ -5,7 +5,7 @@ set -euo pipefail
 # Run as root: curl -sL <raw-url> | bash
 # Or: ssh root@<ip> 'bash -s' < setup-server.sh
 
-REPO_URL="https://github.com/cocodedk/7kasif.git"
+REPO_URL="git@github.com:cocodedk/7kasif.git"
 APP_DIR="/opt/7kasif"
 DEPLOY_USER="deploy"
 
@@ -22,6 +22,10 @@ if ! id "$DEPLOY_USER" &>/dev/null; then
 fi
 usermod -aG docker "$DEPLOY_USER"
 
+echo "==> Granting deploy user passwordless sudo for apt-get..."
+echo "$DEPLOY_USER ALL=(ALL) NOPASSWD: /usr/bin/apt-get" > /etc/sudoers.d/$DEPLOY_USER
+chmod 440 /etc/sudoers.d/$DEPLOY_USER
+
 echo "==> Setting up SSH for deploy user..."
 mkdir -p /home/$DEPLOY_USER/.ssh
 cp /root/.ssh/authorized_keys /home/$DEPLOY_USER/.ssh/authorized_keys
@@ -29,14 +33,26 @@ chown -R $DEPLOY_USER:$DEPLOY_USER /home/$DEPLOY_USER/.ssh
 chmod 700 /home/$DEPLOY_USER/.ssh
 chmod 600 /home/$DEPLOY_USER/.ssh/authorized_keys
 
+cp /root/.ssh/hetzner_deploy /home/$DEPLOY_USER/.ssh/hetzner_deploy
+chown $DEPLOY_USER:$DEPLOY_USER /home/$DEPLOY_USER/.ssh/hetzner_deploy
+chmod 600 /home/$DEPLOY_USER/.ssh/hetzner_deploy
+
+echo "==> Configuring SSH for GitHub access..."
+cat > /home/$DEPLOY_USER/.ssh/config <<SSHEOF
+Host github.com
+  IdentityFile /home/$DEPLOY_USER/.ssh/hetzner_deploy
+  StrictHostKeyChecking accept-new
+SSHEOF
+chown $DEPLOY_USER:$DEPLOY_USER /home/$DEPLOY_USER/.ssh/config
+chmod 600 /home/$DEPLOY_USER/.ssh/config
+
 echo "==> Cloning repository..."
 if [ -d "$APP_DIR" ]; then
   echo "    $APP_DIR already exists, pulling latest..."
-  cd "$APP_DIR" && git pull origin main
+  cd "$APP_DIR" && sudo -u $DEPLOY_USER git pull origin main
 else
-  git clone "$REPO_URL" "$APP_DIR"
+  sudo -u $DEPLOY_USER git clone "$REPO_URL" "$APP_DIR"
 fi
-chown -R $DEPLOY_USER:$DEPLOY_USER "$APP_DIR"
 
 echo "==> Generating database password..."
 if [ ! -f "$APP_DIR/deploy/.db_password" ]; then
