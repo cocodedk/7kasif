@@ -3,6 +3,12 @@ set -euo pipefail
 
 echo "Deploying Hafte Kasif..."
 
+# Wait for any running apt processes to finish
+while sudo fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1; do
+  echo "Waiting for apt lock..."
+  sleep 5
+done
+
 # Update system packages
 export DEBIAN_FRONTEND=noninteractive
 sudo apt-get update -qq && sudo apt-get upgrade -y -qq
