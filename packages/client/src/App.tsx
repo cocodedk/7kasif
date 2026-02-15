@@ -5,8 +5,16 @@ import { WaitingRoom } from './screens/WaitingRoom.js';
 import { GameOverScreen } from './screens/GameOverScreen.js';
 import { SessionEndedScreen } from './screens/SessionEndedScreen.js';
 import { GameBoard } from './components/GameBoard.js';
+import { DevPreview } from './DevPreview.js';
+
+const DEV_PREVIEW = import.meta.env.VITE_DEV_PREVIEW === 'true';
 
 export function App() {
+  if (DEV_PREVIEW) return <DevPreview />;
+  return <GameApp />;
+}
+
+function GameApp() {
   const { send, connected, onMessage } = useWebSocket();
   const { state, dispatch } = useGameState(onMessage);
 

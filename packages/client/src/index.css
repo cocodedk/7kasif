@@ -22,3 +22,71 @@ html, body, #root {
 .hand-scroll > * {
   scroll-snap-align: center;
 }
+
+/* Card back diamond pattern */
+.card-back-pattern {
+  background-color: #4338ca;
+  background-image:
+    linear-gradient(45deg, #6366f1 25%, transparent 25%),
+    linear-gradient(-45deg, #6366f1 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #6366f1 75%),
+    linear-gradient(-45deg, transparent 75%, #6366f1 75%);
+  background-size: 8px 8px;
+  background-position: 0 0, 0 4px, 4px -4px, -4px 0;
+}
+
+/* Drawn card reveal animation */
+@keyframes draw-reveal {
+  0% {
+    transform: scale(0.3) translateY(80px);
+    opacity: 0;
+  }
+  20% {
+    transform: scale(1.1) translateY(0);
+    opacity: 1;
+  }
+  30% {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+  80% {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.5) translateY(40px);
+    opacity: 0;
+  }
+}
+
+.animate-draw-reveal {
+  animation: draw-reveal 1.5s ease-out forwards;
+}
+
+/* Played card reveal animation */
+@keyframes play-reveal {
+  0% {
+    transform: scale(0.3) translateY(60px);
+    opacity: 0;
+  }
+  15% {
+    transform: scale(1.05) translateY(0);
+    opacity: 1;
+  }
+  25% {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+  75% {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.8) translateY(-20px);
+    opacity: 0;
+  }
+}
+
+.animate-play-reveal {
+  animation: play-reveal 1.8s ease-out forwards;
+}
