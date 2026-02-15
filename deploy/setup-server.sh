@@ -8,6 +8,8 @@ set -euo pipefail
 REPO_URL="git@github.com:cocodedk/7kasif.git"
 APP_DIR="/opt/7kasif"
 DEPLOY_USER="deploy"
+DOMAIN="7kasif.dk"
+ADMIN_EMAIL="babak@cocode.dk"
 
 echo "==> Installing Docker..."
 curl -fsSL https://get.docker.com | sh
@@ -78,6 +80,9 @@ cd "$APP_DIR"
 sudo -u $DEPLOY_USER docker compose build
 sudo -u $DEPLOY_USER docker compose up -d
 
+echo "==> Enabling HTTPS with certbot..."
+certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos -m "$ADMIN_EMAIL"
+
 echo ""
 echo "========================================="
 echo "  Setup complete!"
@@ -91,7 +96,4 @@ echo "   HETZNER_USER  = $DEPLOY_USER"
 echo "   HETZNER_SSH_KEY = <your private SSH key>"
 echo ""
 echo "2. Point your domain's DNS A record to $(curl -s4 ifconfig.me)"
-echo ""
-echo "3. Enable HTTPS (after DNS propagates):"
-echo "   sudo certbot --nginx -d yourdomain.com"
 echo ""
