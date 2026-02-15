@@ -83,12 +83,12 @@ export function GameBoard({ game, playerId, error, send, canPass, hasDrawn }: Ga
     topDiscard: game.topDiscard,
     currentPlayerId: game.currentPlayerId,
   });
+  const playedTimerRef = useRef<ReturnType<typeof setTimeout>>();
 
   useEffect(() => {
     const prev = prevGameRef.current;
     const newTop = game.topDiscard;
     if (newTop && (!prev.topDiscard || !cardEquals(prev.topDiscard, newTop))) {
-      // Someone played a card — the previous currentPlayerId is who played
       const whoPlayedId = prev.currentPlayerId;
       let playerName: string;
       if (whoPlayedId === playerId) {
@@ -97,9 +97,8 @@ export function GameBoard({ game, playerId, error, send, canPass, hasDrawn }: Ga
         playerName = game.opponents.find(o => o.id === whoPlayedId)?.name ?? 'Opponent';
       }
       setPlayedCard({ card: newTop, playerName });
-      const timer = setTimeout(() => setPlayedCard(null), 1800);
-      prevGameRef.current = { topDiscard: newTop, currentPlayerId: game.currentPlayerId };
-      return () => clearTimeout(timer);
+      clearTimeout(playedTimerRef.current);
+      playedTimerRef.current = setTimeout(() => setPlayedCard(null), 1800);
     }
     prevGameRef.current = { topDiscard: newTop, currentPlayerId: game.currentPlayerId };
   }, [game.topDiscard, game.currentPlayerId, game.opponents, playerId]);

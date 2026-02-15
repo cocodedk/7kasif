@@ -20,7 +20,7 @@ const INITIAL_GAME: PlayerView = {
   ],
   opponents: [
     { id: 'opp1', name: 'Alice', cardCount: 4, revealedCards: [], hasAnnouncedOneCard: false },
-    { id: 'opp2', name: 'Bob', cardCount: 2, revealedCards: [], hasAnnouncedOneCard: false },
+    { id: 'opp2', name: 'Bob', cardCount: 2, revealedCards: [{ suit: 'hearts', value: 'king' }], hasAnnouncedOneCard: false },
     { id: 'opp3', name: 'Charlie', cardCount: 1, revealedCards: [], hasAnnouncedOneCard: true },
   ],
   currentPlayerId: 'dev-player',
@@ -57,9 +57,29 @@ export function DevPreview() {
         const newHand = prev.myHand.filter(
           c => !toRemove.some(r => r.suit === c.suit && r.value === c.value)
         );
+
+        // Queen effect: reveal a random card from the next opponent
+        const opponents = prev.opponents;
+        let newOpponents = opponents;
+        if (action.card.value === 'queen' && opponents.length > 0) {
+          const target = opponents[0];
+          if (target.cardCount > target.revealedCards.length) {
+            const suits = ['hearts', 'diamonds', 'clubs', 'spades'] as const;
+            const values = [2, 3, 4, 5, 6, 7, 8, 9, 10, 'jack', 'queen', 'king', 'ace'] as const;
+            const fakeCard = {
+              suit: suits[Math.floor(Math.random() * 4)],
+              value: values[Math.floor(Math.random() * 13)],
+            };
+            newOpponents = opponents.map((o, i) =>
+              i === 0 ? { ...o, revealedCards: [...o.revealedCards, fakeCard] } : o
+            );
+          }
+        }
+
         return {
           ...prev,
           myHand: newHand,
+          opponents: newOpponents,
           topDiscard: action.card,
           declaredSuit: action.declaredSuit ?? null,
         };
