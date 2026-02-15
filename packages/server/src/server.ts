@@ -1,20 +1,44 @@
 import { WebSocketServer } from 'ws';
-import { createServer } from 'http';
+import { createServer, request as httpRequest } from 'http';
+import { createConnection } from 'net';
 import { readFileSync, existsSync } from 'fs';
 import { join, resolve } from 'path';
 import { ConnectionManager } from './rooms/ConnectionManager.js';
 import { RoomManager } from './rooms/RoomManager.js';
 import { MessageHandler } from './rooms/MessageHandler.js';
+import { handleApiRoute } from './api/routes.js';
 
 const PORT = parseInt(process.env.PORT || '3000', 10);
 const CLIENT_DIR = resolve(process.env.CLIENT_DIR || join(import.meta.dirname, '../../client/dist'));
+const VITE_DEV_URL = process.env.VITE_DEV_URL; // e.g. 'http://client:5173'
 
 const connections = new ConnectionManager();
 const rooms = new RoomManager();
 const handler = new MessageHandler(connections, rooms);
 
-const server = createServer((req, res) => {
-  // Serve static client files
+function proxyToVite(req: import('http').IncomingMessage, res: import('http').ServerResponse): void {
+  const url = new URL(VITE_DEV_URL!);
+  const proxyReq = httpRequest(
+    {
+      hostname: url.hostname,
+      port: url.port,
+      path: req.url,
+      method: req.method,
+      headers: req.headers,
+    },
+    (proxyRes) => {
+      res.writeHead(proxyRes.statusCode || 502, proxyRes.headers);
+      proxyRes.pipe(res);
+    },
+  );
+  proxyReq.on('error', () => {
+    res.writeHead(502);
+    res.end('Vite dev server unavailable');
+  });
+  req.pipe(proxyReq);
+}
+
+function serveStatic(req: import('http').IncomingMessage, res: import('http').ServerResponse): void {
   const url = req.url === '/' ? '/index.html' : req.url!;
   const filePath = join(CLIENT_DIR, url);
 
@@ -44,9 +68,54 @@ const server = createServer((req, res) => {
       res.end('Not found');
     }
   }
+}
+
+const server = createServer(async (req, res) => {
+  // Handle API routes first
+  if (req.url?.startsWith('/api/')) {
+    try {
+      const handled = await handleApiRoute(req, res);
+      if (handled) return;
+    } catch {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Internal server error' }));
+      return;
+    }
+  }
+
+  // In dev mode, proxy to Vite; in production, serve static files
+  if (VITE_DEV_URL) {
+    proxyToVite(req, res);
+  } else {
+    serveStatic(req, res);
+  }
 });
 
-const wss = new WebSocketServer({ server, path: '/ws' });
+const wss = new WebSocketServer({ noServer: true });
+
+server.on('upgrade', (req, socket, head) => {
+  if (req.url === '/ws') {
+    wss.handleUpgrade(req, socket, head, (ws) => {
+      wss.emit('connection', ws, req);
+    });
+  } else if (VITE_DEV_URL) {
+    // Proxy Vite HMR WebSocket
+    const url = new URL(VITE_DEV_URL);
+    const proxy = createConnection({ host: url.hostname, port: parseInt(url.port) }, () => {
+      const reqLine = `GET ${req.url} HTTP/1.1\r\n`;
+      const headers = Object.entries(req.headers)
+        .map(([k, v]) => `${k}: ${v}`)
+        .join('\r\n');
+      proxy.write(reqLine + headers + '\r\n\r\n');
+      proxy.write(head);
+      socket.pipe(proxy).pipe(socket);
+    });
+    proxy.on('error', () => socket.destroy());
+    socket.on('error', () => proxy.destroy());
+  } else {
+    socket.destroy();
+  }
+});
 
 wss.on('connection', (ws) => {
   ws.on('message', (data) => {
