@@ -1,3 +1,13 @@
+-- Users table (must be created before tables that reference it)
+CREATE TABLE IF NOT EXISTS users (
+  id SERIAL PRIMARY KEY,
+  username VARCHAR(50) NOT NULL UNIQUE,
+  password_hash VARCHAR(255) NOT NULL,
+  display_name VARCHAR(50) NOT NULL,
+  role VARCHAR(20) NOT NULL DEFAULT 'player',
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 CREATE TABLE IF NOT EXISTS sessions (
   id SERIAL PRIMARY KEY,
   session_code VARCHAR(36) NOT NULL UNIQUE,
@@ -11,6 +21,7 @@ CREATE TABLE IF NOT EXISTS sessions (
 CREATE TABLE IF NOT EXISTS session_players (
   id SERIAL PRIMARY KEY,
   session_id INT REFERENCES sessions(id),
+  user_id INT REFERENCES users(id),
   player_name VARCHAR(50) NOT NULL,
   final_plus_clusters INT DEFAULT 0,
   final_minus_clusters INT DEFAULT 0,
@@ -41,7 +52,9 @@ CREATE TABLE IF NOT EXISTS round_actions (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX idx_sessions_room_code ON sessions(room_code);
-CREATE INDEX idx_session_players_session_id ON session_players(session_id);
-CREATE INDEX idx_rounds_session_id ON rounds(session_id);
-CREATE INDEX idx_round_actions_round_id ON round_actions(round_id);
+CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
+CREATE INDEX IF NOT EXISTS idx_sessions_room_code ON sessions(room_code);
+CREATE INDEX IF NOT EXISTS idx_session_players_session_id ON session_players(session_id);
+CREATE INDEX IF NOT EXISTS idx_session_players_user_id ON session_players(user_id);
+CREATE INDEX IF NOT EXISTS idx_rounds_session_id ON rounds(session_id);
+CREATE INDEX IF NOT EXISTS idx_round_actions_round_id ON round_actions(round_id);

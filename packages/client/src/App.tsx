@@ -1,5 +1,8 @@
+import { useState } from 'react';
 import { useWebSocket } from './hooks/useWebSocket.js';
 import { useGameState } from './hooks/useGameState.js';
+import { useAuth } from './hooks/useAuth.js';
+import { LoginScreen } from './screens/LoginScreen.js';
 import { HomeScreen } from './screens/HomeScreen.js';
 import { WaitingRoom } from './screens/WaitingRoom.js';
 import { GameOverScreen } from './screens/GameOverScreen.js';
@@ -15,8 +18,51 @@ export function App() {
 }
 
 function GameApp() {
-  const { send, connected, onMessage } = useWebSocket();
+  const { user, token, isAuthenticated, login, logout } = useAuth();
+  const [guestMode, setGuestMode] = useState(false);
+
+  // Show login screen if not authenticated and not in guest mode
+  if (!isAuthenticated && !guestMode) {
+    return (
+      <LoginScreen
+        onLogin={async (u, p) => { await login(u, p); }}
+        onSkip={() => setGuestMode(true)}
+      />
+    );
+  }
+
+  return (
+    <AuthenticatedGame
+      token={token}
+      displayName={user?.displayName}
+      isAuthenticated={isAuthenticated}
+      onLogout={() => { logout(); setGuestMode(false); }}
+    />
+  );
+}
+
+function AuthenticatedGame({
+  token,
+  displayName,
+  isAuthenticated,
+  onLogout,
+}: {
+  token: string | null;
+  displayName?: string;
+  isAuthenticated: boolean;
+  onLogout: () => void;
+}) {
+  const { send: rawSend, connected, onMessage } = useWebSocket();
   const { state, dispatch } = useGameState(onMessage);
+
+  // Wrap send to inject token into CREATE_ROOM and JOIN_ROOM messages
+  const send = (msg: Parameters<typeof rawSend>[0]) => {
+    if (token && (msg.type === 'CREATE_ROOM' || msg.type === 'JOIN_ROOM')) {
+      rawSend({ ...msg, token });
+    } else {
+      rawSend(msg);
+    }
+  };
 
   const playerId = state.lobby.playerId;
   const isHost = state.lobby.players.length > 0 && state.lobby.players[0]?.id === playerId;
@@ -74,5 +120,20 @@ function GameApp() {
   }
 
   // Home
-  return <HomeScreen send={send} connected={connected} />;
+  return (
+    <div className="relative h-full">
+      {isAuthenticated && (
+        <div className="absolute top-4 right-4 flex items-center gap-3">
+          <span className="text-sm text-gray-300">{displayName}</span>
+          <button
+            onClick={onLogout}
+            className="text-xs text-gray-500 hover:text-gray-300"
+          >
+            Logout
+          </button>
+        </div>
+      )}
+      <HomeScreen send={send} connected={connected} />
+    </div>
+  );
 }
