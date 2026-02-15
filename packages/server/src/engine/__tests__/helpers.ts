@@ -1,6 +1,17 @@
 import type { Card, GameState, Suit, Value, Player, PendingEffect } from '@hafte-kasif/shared';
 import { createDeck, cardEquals } from '@hafte-kasif/shared';
 
+const suitSymbol: Record<string, string> = { hearts: '♥', diamonds: '♦', clubs: '♣', spades: '♠' };
+function cardStr(card: Card): string {
+  const v = typeof card.value === 'number' ? String(card.value) : card.value[0].toUpperCase();
+  return `${v}${suitSymbol[card.suit]}`;
+}
+
+/** Print a step description during a test run. */
+export function log(msg: string): void {
+  console.log(`    ↳ ${msg}`);
+}
+
 export function card(value: Value, suit: Suit): Card {
   return { value, suit };
 }

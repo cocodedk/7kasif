@@ -294,11 +294,17 @@ function applyCardEffect(
     }
 
     case 'queen': {
-      // Next player must reveal a card (handled as pending — for now advance and mark)
-      // The reveal is done by the affected player on their turn
+      // Auto-reveal a random card from the next player's hand
       const nextIdx = nextPlayerIndex(state, playerIdx, 1);
-      // We'll track this via a state flag — for MVP, auto-reveal is simpler
-      // TODO: Let the affected player choose which card to reveal
+      const nextPlayer = state.players[nextIdx];
+      const unrevealed = nextPlayer.hand.filter(
+        c => !nextPlayer.revealedCards.some(r => cardEquals(r, c)),
+      );
+      if (unrevealed.length > 0) {
+        const revealCard = unrevealed[Math.floor(Math.random() * unrevealed.length)];
+        nextPlayer.revealedCards.push(revealCard);
+        events.push({ type: 'CARD_REVEALED', playerId: nextPlayer.id, card: revealCard });
+      }
       advanceTurn(state);
       return events;
     }

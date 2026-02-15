@@ -1,0 +1,31 @@
+import { describe, it, expect } from 'vitest';
+import { applyAction } from '../../game.js';
+import { createTestState, c, log } from '../helpers.js';
+
+describe('Ten — reverse when already reversed', () => {
+  it('should restore clockwise direction when played in counter-clockwise', () => {
+    const state = createTestState({
+      hands: [
+        [c('4s'), c('5s')],
+        [c('10d'), c('9c')],
+        [c('Ks'), c('Qh')],
+      ],
+      firstCard: c('4d'),
+      direction: -1,
+    });
+
+    log('Direction starts at -1 (counter-clockwise)');
+    expect(state.direction).toBe(-1);
+
+    log('p2 plays 10♦');
+    const r1 = applyAction(state, 'p2', { type: 'PLAY_CARD', card: c('10d') });
+    expect(r1.ok).toBe(true);
+    if (!r1.ok) return;
+
+    log('Verify: direction restored to 1 (clockwise)');
+    expect(r1.newState.direction).toBe(1);
+
+    log('Verify: turn goes to p3 (clockwise from p2)');
+    expect(r1.newState.players[r1.newState.currentPlayerIndex].id).toBe('p3');
+  });
+});

@@ -138,8 +138,13 @@ function applyFirstCardEffects(state: GameState, dealerIndex: number, card: Card
       break;
     }
     case 'queen': {
-      // Next player reveals a card
-      // Will be handled when next player's turn starts
+      // Auto-reveal a random card from the first player's hand
+      const firstIdx = nextIdx(dealerIndex, 1);
+      const firstPlayer = state.players[firstIdx];
+      if (firstPlayer.hand.length > 0) {
+        const revealCard = firstPlayer.hand[Math.floor(Math.random() * firstPlayer.hand.length)];
+        firstPlayer.revealedCards.push(revealCard);
+      }
       break;
     }
     case 'king': {
