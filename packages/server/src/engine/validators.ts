@@ -137,12 +137,10 @@ export function validatePlayCard(
     return 'Card does not match the current house (suit or value)';
   }
 
-  // Check revealed card restriction
+  // Check revealed card restriction — revealed cards cannot be played on the turn they're revealed
   const playerObj = state.players.find(p => p.id === playerId)!;
   if (playerObj.revealedCards.some(c => cardEquals(c, card))) {
-    // Card was revealed by Queen — check if it's restricted this turn
-    // We track this via a flag; for now, revealed cards can't be played the turn they're revealed
-    // This is handled in the effect layer
+    return 'Cannot play a revealed card this turn';
   }
 
   return null;
