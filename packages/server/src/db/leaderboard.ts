@@ -25,7 +25,7 @@ export interface TournamentSummary {
 
 export interface PlayerStats {
   userId: number;
-  username: string;
+  email: string;
   displayName: string;
   totalSessions: number;
   totalRoundsWon: number;
@@ -110,7 +110,7 @@ export async function getPlayerStats(userId: number): Promise<PlayerStats | null
   const pool = getPool();
 
   const userResult = await pool.query(
-    'SELECT id, username, display_name FROM users WHERE id = $1',
+    'SELECT id, email, display_name FROM users WHERE id = $1',
     [userId],
   );
   if (userResult.rows.length === 0) return null;
@@ -154,7 +154,7 @@ export async function getPlayerStats(userId: number): Promise<PlayerStats | null
 
   return {
     userId: user.id,
-    username: user.username,
+    email: user.email,
     displayName: user.display_name,
     totalSessions: parseInt(stats.total_sessions, 10),
     totalRoundsWon: parseInt(winsResult.rows[0].cnt, 10),

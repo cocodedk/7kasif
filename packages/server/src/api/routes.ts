@@ -1,5 +1,5 @@
 import type { IncomingMessage, ServerResponse } from 'http';
-import { register, login, verifyToken } from '../auth/auth.js';
+import { createUser, sendMagicLink, verifyMagicToken, verifyToken } from '../auth/auth.js';
 import { getLeaderboard, getPlayerStats, getTournamentHistory } from '../db/leaderboard.js';
 
 const CORS_ORIGIN = process.env.CORS_ORIGIN || 'https://cocodedk.github.io';
@@ -25,7 +25,7 @@ function readBody(req: IncomingMessage): Promise<string> {
   });
 }
 
-function getAdminFromHeader(req: IncomingMessage): { userId: number; username: string } | null {
+function getAdminFromHeader(req: IncomingMessage): { userId: number; email: string } | null {
   const auth = req.headers.authorization;
   if (!auth?.startsWith('Bearer ')) return null;
   try {
@@ -55,6 +55,29 @@ export async function handleApiRoute(
     return true;
   }
 
+  if (url === '/api/auth/send-link' && method === 'POST') {
+    try {
+      const body = JSON.parse(await readBody(req));
+      await sendMagicLink(body.email);
+      json(res, 200, { ok: true });
+    } catch {
+      // Always return 200 to prevent email enumeration
+      json(res, 200, { ok: true });
+    }
+    return true;
+  }
+
+  if (url === '/api/auth/verify' && method === 'POST') {
+    try {
+      const body = JSON.parse(await readBody(req));
+      const result = await verifyMagicToken(body.token);
+      json(res, 200, result);
+    } catch (err: any) {
+      json(res, 401, { error: err.message });
+    }
+    return true;
+  }
+
   if (url === '/api/admin/create-user' && method === 'POST') {
     const admin = getAdminFromHeader(req);
     if (!admin) {
@@ -63,21 +86,11 @@ export async function handleApiRoute(
     }
     try {
       const body = JSON.parse(await readBody(req));
-      const result = await register(body.username, body.password, body.displayName);
-      json(res, 201, result);
+      const user = await createUser(body.email, body.displayName);
+      await sendMagicLink(body.email, true);
+      json(res, 201, { user });
     } catch (err: any) {
       json(res, 400, { error: err.message });
-    }
-    return true;
-  }
-
-  if (url === '/api/login' && method === 'POST') {
-    try {
-      const body = JSON.parse(await readBody(req));
-      const result = await login(body.username, body.password);
-      json(res, 200, result);
-    } catch (err: any) {
-      json(res, 401, { error: err.message });
     }
     return true;
   }

@@ -139,7 +139,7 @@ describe('leaderboard', () => {
     // Create a user
     const pool = getTestPool();
     const userResult = await pool.query(
-      "INSERT INTO users (username, password_hash, display_name) VALUES ('alice', 'hash', 'Alice') RETURNING id",
+      "INSERT INTO users (email, display_name) VALUES ('alice@test.com', 'Alice') RETURNING id",
     );
     const userId = userResult.rows[0].id;
 
@@ -200,7 +200,7 @@ describe('getPlayerStats', () => {
   it('should return individual player statistics', async () => {
     const pool = getTestPool();
     const userResult = await pool.query(
-      "INSERT INTO users (username, password_hash, display_name) VALUES ('bob', 'hash', 'Bob') RETURNING id",
+      "INSERT INTO users (email, display_name) VALUES ('bob@test.com', 'Bob') RETURNING id",
     );
     const userId = userResult.rows[0].id;
 
@@ -219,7 +219,7 @@ describe('getPlayerStats', () => {
 
     const stats = await getPlayerStats(userId);
     expect(stats).not.toBeNull();
-    expect(stats!.username).toBe('bob');
+    expect(stats!.email).toBe('bob@test.com');
     expect(stats!.displayName).toBe('Bob');
     expect(stats!.totalSessions).toBe(1);
     expect(stats!.totalMinusClusters).toBe(1);

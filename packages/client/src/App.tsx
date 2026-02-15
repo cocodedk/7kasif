@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useWebSocket } from './hooks/useWebSocket.js';
 import { useGameState } from './hooks/useGameState.js';
 import { useAuth } from './hooks/useAuth.js';
@@ -18,15 +18,48 @@ export function App() {
 }
 
 function GameApp() {
-  const { user, token, isAuthenticated, login, logout } = useAuth();
+  const { user, token, isAuthenticated, requestMagicLink, verifyMagicToken, logout } = useAuth();
   const [guestMode, setGuestMode] = useState(false);
+  const [verifyError, setVerifyError] = useState('');
+  const [verifying, setVerifying] = useState(false);
+
+  // Check URL for magic link token on mount
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const magicToken = url.searchParams.get('token');
+    const isVerifyPath = url.pathname === '/auth/verify';
+
+    if (isVerifyPath && magicToken) {
+      setVerifying(true);
+      verifyMagicToken(magicToken)
+        .then(() => {
+          // Clean URL
+          window.history.replaceState({}, '', '/');
+        })
+        .catch((err) => {
+          setVerifyError(err.message || 'Verification failed');
+          window.history.replaceState({}, '', '/');
+        })
+        .finally(() => setVerifying(false));
+    }
+  }, [verifyMagicToken]);
+
+  if (verifying) {
+    return (
+      <div className="h-full flex flex-col items-center justify-center px-6">
+        <h1 className="text-3xl font-bold mb-1">Hafte Kasif</h1>
+        <p className="text-gray-400 text-sm">Verifying login...</p>
+      </div>
+    );
+  }
 
   // Show login screen if not authenticated and not in guest mode
   if (!isAuthenticated && !guestMode) {
     return (
       <LoginScreen
-        onLogin={async (u, p) => { await login(u, p); }}
+        onRequestLink={requestMagicLink}
         onSkip={() => setGuestMode(true)}
+        error={verifyError}
       />
     );
   }

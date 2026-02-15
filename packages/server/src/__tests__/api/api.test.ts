@@ -9,8 +9,15 @@ vi.mock('../../auth/db.js', () => {
   };
 });
 
+vi.mock('../../auth/email.js', () => {
+  return {
+    sendEmail: vi.fn().mockResolvedValue(undefined),
+    buildMagicLinkEmail: vi.fn().mockReturnValue({ subject: 'test', html: '<p>test</p>' }),
+  };
+});
+
 import { handleApiRoute } from '../../api/routes.js';
-import { register } from '../../auth/auth.js';
+import { createUser, sendMagicLink, verifyMagicToken } from '../../auth/auth.js';
 import { saveTournament, saveSessionPlayers, endTournament, saveScores } from '../../db/tournaments.js';
 import type { PlayerScore } from '@hafte-kasif/shared';
 
@@ -39,17 +46,25 @@ async function fetchApi(path: string, options: RequestInit = {}): Promise<Respon
 
 let adminToken: string;
 
+async function getAdminToken(): Promise<string> {
+  const user = await createUser('admin@test.com', 'Admin', 'admin');
+  await sendMagicLink('admin@test.com');
+  const pool = getTestPool();
+  const tokenResult = await pool.query('SELECT token FROM magic_tokens WHERE user_id = $1', [user.id]);
+  const result = await verifyMagicToken(tokenResult.rows[0].token);
+  return result.token;
+}
+
 beforeAll(async () => {
   process.env.JWT_SECRET = 'test-secret-for-api';
+  process.env.APP_URL = 'http://localhost:3000';
   await initTestDb();
   port = await startServer();
 });
 
 beforeEach(async () => {
   await cleanTestDb();
-  // Seed an admin user for tests that need it
-  const result = await register('admin', 'adminpass123', 'Admin', 'admin');
-  adminToken = result.token;
+  adminToken = await getAdminToken();
 });
 
 afterAll(async () => {
@@ -57,18 +72,80 @@ afterAll(async () => {
   await closeTestDb();
 });
 
+describe('POST /api/login (removed)', () => {
+  it('should return 404 — old login endpoint is gone', async () => {
+    const res = await fetchApi('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: 'alice', password: 'password123' }),
+    });
+    expect(res.status).toBe(404);
+  });
+});
+
 describe('POST /api/register (removed)', () => {
   it('should return 404 — public registration is disabled', async () => {
     const res = await fetchApi('/api/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        username: 'alice',
-        password: 'password123',
-        displayName: 'Alice',
-      }),
+      body: JSON.stringify({ email: 'alice@test.com', displayName: 'Alice' }),
     });
     expect(res.status).toBe(404);
+  });
+});
+
+describe('POST /api/auth/send-link', () => {
+  it('should return 200 for existing user', async () => {
+    await createUser('alice@test.com', 'Alice');
+    const res = await fetchApi('/api/auth/send-link', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'alice@test.com' }),
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.ok).toBe(true);
+  });
+
+  it('should return 200 even for unknown email (no enumeration)', async () => {
+    const res = await fetchApi('/api/auth/send-link', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'unknown@test.com' }),
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.ok).toBe(true);
+  });
+});
+
+describe('POST /api/auth/verify', () => {
+  it('should verify a valid magic token', async () => {
+    const user = await createUser('alice@test.com', 'Alice');
+    await sendMagicLink('alice@test.com');
+
+    const pool = getTestPool();
+    const tokenResult = await pool.query('SELECT token FROM magic_tokens WHERE user_id = $1', [user.id]);
+
+    const res = await fetchApi('/api/auth/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: tokenResult.rows[0].token }),
+    });
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.user.email).toBe('alice@test.com');
+    expect(body.token).toBeTruthy();
+  });
+
+  it('should return 401 for invalid token', async () => {
+    const res = await fetchApi('/api/auth/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: 'invalid-token' }),
+    });
+    expect(res.status).toBe(401);
   });
 });
 
@@ -80,30 +157,21 @@ describe('POST /api/admin/create-user', () => {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${adminToken}`,
       },
-      body: JSON.stringify({
-        username: 'alice',
-        password: 'password123',
-        displayName: 'Alice',
-      }),
+      body: JSON.stringify({ email: 'alice@test.com', displayName: 'Alice' }),
     });
 
     expect(res.status).toBe(201);
     const body = await res.json();
-    expect(body.user.username).toBe('alice');
+    expect(body.user.email).toBe('alice@test.com');
     expect(body.user.displayName).toBe('Alice');
     expect(body.user.role).toBe('player');
-    expect(body.token).toBeTruthy();
   });
 
   it('should reject when no auth header is provided', async () => {
     const res = await fetchApi('/api/admin/create-user', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        username: 'alice',
-        password: 'password123',
-        displayName: 'Alice',
-      }),
+      body: JSON.stringify({ email: 'alice@test.com', displayName: 'Alice' }),
     });
 
     expect(res.status).toBe(403);
@@ -112,9 +180,11 @@ describe('POST /api/admin/create-user', () => {
   });
 
   it('should reject when called by a non-admin player', async () => {
-    // Create a regular player first
-    const playerResult = await register('player1', 'playerpass123', 'Player');
-    const playerToken = playerResult.token;
+    const player = await createUser('player@test.com', 'Player');
+    await sendMagicLink('player@test.com');
+    const pool = getTestPool();
+    const tokenResult = await pool.query('SELECT token FROM magic_tokens WHERE user_id = $1', [player.id]);
+    const { token: playerToken } = await verifyMagicToken(tokenResult.rows[0].token);
 
     const res = await fetchApi('/api/admin/create-user', {
       method: 'POST',
@@ -122,11 +192,7 @@ describe('POST /api/admin/create-user', () => {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${playerToken}`,
       },
-      body: JSON.stringify({
-        username: 'alice',
-        password: 'password123',
-        displayName: 'Alice',
-      }),
+      body: JSON.stringify({ email: 'alice@test.com', displayName: 'Alice' }),
     });
 
     expect(res.status).toBe(403);
@@ -134,18 +200,14 @@ describe('POST /api/admin/create-user', () => {
     expect(body.error).toContain('Admin access required');
   });
 
-  it('should return 400 for duplicate username', async () => {
+  it('should return 400 for duplicate email', async () => {
     await fetchApi('/api/admin/create-user', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${adminToken}`,
       },
-      body: JSON.stringify({
-        username: 'alice',
-        password: 'password123',
-        displayName: 'Alice',
-      }),
+      body: JSON.stringify({ email: 'alice@test.com', displayName: 'Alice' }),
     });
 
     const res = await fetchApi('/api/admin/create-user', {
@@ -154,63 +216,20 @@ describe('POST /api/admin/create-user', () => {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${adminToken}`,
       },
-      body: JSON.stringify({
-        username: 'alice',
-        password: 'differentpass',
-        displayName: 'Alice2',
-      }),
+      body: JSON.stringify({ email: 'alice@test.com', displayName: 'Alice2' }),
     });
 
     expect(res.status).toBe(400);
     const body = await res.json();
-    expect(body.error).toContain('already taken');
-  });
-});
-
-describe('POST /api/login', () => {
-  beforeEach(async () => {
-    // Create a player via admin endpoint
-    await register('alice', 'password123', 'Alice');
-  });
-
-  it('should login and return 200 with JWT', async () => {
-    const res = await fetchApi('/api/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        username: 'alice',
-        password: 'password123',
-      }),
-    });
-
-    expect(res.status).toBe(200);
-    const body = await res.json();
-    expect(body.user.username).toBe('alice');
-    expect(body.token).toBeTruthy();
-  });
-
-  it('should return 401 for wrong password', async () => {
-    const res = await fetchApi('/api/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        username: 'alice',
-        password: 'wrongpassword',
-      }),
-    });
-
-    expect(res.status).toBe(401);
-    const body = await res.json();
-    expect(body.error).toContain('Invalid');
+    expect(body.error).toContain('already registered');
   });
 });
 
 describe('GET /api/leaderboard', () => {
   it('should return public leaderboard data', async () => {
-    // Seed some data
     const pool = getTestPool();
     const userResult = await pool.query(
-      "INSERT INTO users (username, password_hash, display_name) VALUES ('leaderuser', 'hash', 'LeaderUser') RETURNING id",
+      "INSERT INTO users (email, display_name) VALUES ('leaderuser@test.com', 'LeaderUser') RETURNING id",
     );
     const userId = userResult.rows[0].id;
 
@@ -254,7 +273,7 @@ describe('GET /api/players/:id/stats', () => {
   it('should return player stats', async () => {
     const pool = getTestPool();
     const userResult = await pool.query(
-      "INSERT INTO users (username, password_hash, display_name) VALUES ('bob', 'hash', 'Bob') RETURNING id",
+      "INSERT INTO users (email, display_name) VALUES ('bob@test.com', 'Bob') RETURNING id",
     );
     const userId = userResult.rows[0].id;
 
@@ -265,7 +284,7 @@ describe('GET /api/players/:id/stats', () => {
     const res = await fetchApi(`/api/players/${userId}/stats`);
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.username).toBe('bob');
+    expect(body.email).toBe('bob@test.com');
     expect(body.displayName).toBe('Bob');
   });
 

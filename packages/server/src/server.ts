@@ -7,6 +7,8 @@ import { ConnectionManager } from './rooms/ConnectionManager.js';
 import { RoomManager } from './rooms/RoomManager.js';
 import { MessageHandler } from './rooms/MessageHandler.js';
 import { handleApiRoute } from './api/routes.js';
+import { createUser } from './auth/auth.js';
+import { getPool } from './auth/db.js';
 
 const PORT = parseInt(process.env.PORT || '3000', 10);
 const CLIENT_DIR = resolve(process.env.CLIENT_DIR || join(import.meta.dirname, '../../client/dist'));
@@ -137,8 +139,26 @@ setInterval(() => {
   connections.cleanup();
 }, 5 * 60 * 1000);
 
-server.listen(PORT, () => {
+async function seedAdmin() {
+  const email = process.env.ADMIN_EMAIL;
+  const name = process.env.ADMIN_NAME || 'Admin';
+  if (!email) return;
+
+  const pool = getPool();
+  const existing = await pool.query('SELECT id FROM users WHERE role = $1 LIMIT 1', ['admin']);
+  if (existing.rows.length > 0) return;
+
+  try {
+    const user = await createUser(email, name, 'admin');
+    console.log(`Admin seeded: ${user.email} (id: ${user.id})`);
+  } catch (err: any) {
+    console.error(`Admin seed failed: ${err.message}`);
+  }
+}
+
+server.listen(PORT, async () => {
   console.log(`Hafte Kasif server running on port ${PORT}`);
+  await seedAdmin();
 });
 
 export { server, wss };

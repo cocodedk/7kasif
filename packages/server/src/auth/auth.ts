@@ -1,14 +1,15 @@
-import bcrypt from 'bcrypt';
+import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import { getPool } from './db.js';
+import { sendEmail, buildMagicLinkEmail } from './email.js';
 
-const BCRYPT_ROUNDS = 10;
+const MAGIC_TOKEN_EXPIRY_MINUTES = 15;
 
 export type Role = 'admin' | 'player';
 
 export interface AuthUser {
   id: number;
-  username: string;
+  email: string;
   displayName: string;
   role: Role;
 }
@@ -24,102 +25,134 @@ function getJwtSecret(): string {
   return secret;
 }
 
-export async function register(
-  username: string,
-  password: string,
+function getAppUrl(): string {
+  return process.env.APP_URL || 'http://localhost:3000';
+}
+
+export async function createUser(
+  email: string,
   displayName: string,
   role: Role = 'player',
-): Promise<AuthResult> {
-  if (!username || username.length < 3) {
-    throw new Error('Username must be at least 3 characters');
-  }
-  if (!password || password.length < 6) {
-    throw new Error('Password must be at least 6 characters');
+): Promise<AuthUser> {
+  if (!email || !email.includes('@')) {
+    throw new Error('A valid email is required');
   }
   if (!displayName || displayName.trim().length === 0) {
     throw new Error('Display name is required');
   }
 
   const pool = getPool();
-  const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
 
   try {
     const result = await pool.query(
-      'INSERT INTO users (username, password_hash, display_name, role) VALUES ($1, $2, $3, $4) RETURNING id, username, display_name, role',
-      [username.toLowerCase(), passwordHash, displayName.trim(), role],
+      'INSERT INTO users (email, display_name, role) VALUES ($1, $2, $3) RETURNING id, email, display_name, role',
+      [email.toLowerCase().trim(), displayName.trim(), role],
     );
 
     const row = result.rows[0];
-    const user: AuthUser = {
+    return {
       id: row.id,
-      username: row.username,
+      email: row.email,
       displayName: row.display_name,
       role: row.role,
     };
-
-    const token = jwt.sign(
-      { userId: user.id, username: user.username, role: user.role },
-      getJwtSecret(),
-      { expiresIn: '7d' },
-    );
-
-    return { user, token };
   } catch (err: any) {
     if (err.code === '23505') {
-      throw new Error('Username already taken');
+      throw new Error('Email already registered');
     }
     throw err;
   }
 }
 
-export async function login(
-  username: string,
-  password: string,
-): Promise<AuthResult> {
-  if (!username || !password) {
-    throw new Error('Username and password are required');
+export async function sendMagicLink(email: string, isInvite: boolean = false): Promise<void> {
+  if (!email) return;
+
+  const pool = getPool();
+  const normalizedEmail = email.toLowerCase().trim();
+
+  const userResult = await pool.query(
+    'SELECT id FROM users WHERE email = $1',
+    [normalizedEmail],
+  );
+
+  // Silent success for unknown emails (prevents email enumeration)
+  if (userResult.rows.length === 0) return;
+
+  const userId = userResult.rows[0].id;
+  const token = crypto.randomBytes(32).toString('hex');
+  const expiresAt = new Date(Date.now() + MAGIC_TOKEN_EXPIRY_MINUTES * 60 * 1000);
+
+  await pool.query(
+    'INSERT INTO magic_tokens (user_id, token, expires_at) VALUES ($1, $2, $3)',
+    [userId, token, expiresAt],
+  );
+
+  const url = `${getAppUrl()}/auth/verify?token=${token}`;
+  const { subject, html } = buildMagicLinkEmail(url, isInvite);
+
+  await sendEmail({ to: normalizedEmail, subject, html });
+}
+
+export async function verifyMagicToken(token: string): Promise<AuthResult> {
+  if (!token) {
+    throw new Error('Token is required');
   }
 
   const pool = getPool();
+
   const result = await pool.query(
-    'SELECT id, username, password_hash, display_name, role FROM users WHERE username = $1',
-    [username.toLowerCase()],
+    `SELECT mt.id as token_id, mt.user_id, mt.expires_at, mt.used_at,
+            u.email, u.display_name, u.role
+     FROM magic_tokens mt
+     JOIN users u ON u.id = mt.user_id
+     WHERE mt.token = $1`,
+    [token],
   );
 
   if (result.rows.length === 0) {
-    throw new Error('Invalid username or password');
+    throw new Error('Invalid or expired token');
   }
 
   const row = result.rows[0];
-  const valid = await bcrypt.compare(password, row.password_hash);
-  if (!valid) {
-    throw new Error('Invalid username or password');
+
+  if (row.used_at) {
+    throw new Error('Token has already been used');
   }
 
+  if (new Date(row.expires_at) < new Date()) {
+    throw new Error('Token has expired');
+  }
+
+  // Mark token as used
+  await pool.query(
+    'UPDATE magic_tokens SET used_at = NOW() WHERE id = $1',
+    [row.token_id],
+  );
+
   const user: AuthUser = {
-    id: row.id,
-    username: row.username,
+    id: row.user_id,
+    email: row.email,
     displayName: row.display_name,
     role: row.role,
   };
 
-  const token = jwt.sign(
-    { userId: user.id, username: user.username, role: user.role },
+  const jwtToken = jwt.sign(
+    { userId: user.id, email: user.email, role: user.role },
     getJwtSecret(),
     { expiresIn: '7d' },
   );
 
-  return { user, token };
+  return { user, token: jwtToken };
 }
 
-export function verifyToken(token: string): { userId: number; username: string; role: Role } {
+export function verifyToken(token: string): { userId: number; email: string; role: Role } {
   try {
     const decoded = jwt.verify(token, getJwtSecret()) as {
       userId: number;
-      username: string;
+      email: string;
       role: Role;
     };
-    return { userId: decoded.userId, username: decoded.username, role: decoded.role };
+    return { userId: decoded.userId, email: decoded.email, role: decoded.role };
   } catch {
     throw new Error('Invalid or expired token');
   }

@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
-import { register, login, verifyToken } from '../../auth/auth.js';
+import { createUser, sendMagicLink, verifyMagicToken, verifyToken } from '../../auth/auth.js';
 import { getTestPool, initTestDb, cleanTestDb, closeTestDb } from './test-db.js';
-import bcrypt from 'bcrypt';
 
 // Override the auth module's pool to use the test pool
 import { vi } from 'vitest';
@@ -11,8 +10,17 @@ vi.mock('../../auth/db.js', () => {
   };
 });
 
+// Mock email sending
+vi.mock('../../auth/email.js', () => {
+  return {
+    sendEmail: vi.fn().mockResolvedValue(undefined),
+    buildMagicLinkEmail: vi.fn().mockReturnValue({ subject: 'test', html: '<p>test</p>' }),
+  };
+});
+
 beforeAll(async () => {
   process.env.JWT_SECRET = 'test-secret-key-for-auth-tests';
+  process.env.APP_URL = 'http://localhost:3000';
   await initTestDb();
 });
 
@@ -24,148 +32,145 @@ afterAll(async () => {
   await closeTestDb();
 });
 
-describe('register', () => {
-  it('should register a new user and return user + JWT', async () => {
-    const result = await register('alice', 'password123', 'Alice');
+describe('createUser', () => {
+  it('should create a new user and return AuthUser', async () => {
+    const user = await createUser('alice@test.com', 'Alice');
 
-    expect(result.user.username).toBe('alice');
-    expect(result.user.displayName).toBe('Alice');
-    expect(result.user.role).toBe('player');
-    expect(result.user.id).toBeGreaterThan(0);
-    expect(result.token).toBeTruthy();
-
-    // Token should be verifiable
-    const decoded = verifyToken(result.token);
-    expect(decoded.userId).toBe(result.user.id);
-    expect(decoded.username).toBe('alice');
-    expect(decoded.role).toBe('player');
+    expect(user.email).toBe('alice@test.com');
+    expect(user.displayName).toBe('Alice');
+    expect(user.role).toBe('player');
+    expect(user.id).toBeGreaterThan(0);
   });
 
-  it('should register an admin user when role is specified', async () => {
-    const result = await register('admin1', 'password123', 'Admin', 'admin');
-
-    expect(result.user.role).toBe('admin');
-    const decoded = verifyToken(result.token);
-    expect(decoded.role).toBe('admin');
+  it('should create an admin user when role is specified', async () => {
+    const user = await createUser('admin@test.com', 'Admin', 'admin');
+    expect(user.role).toBe('admin');
   });
 
-  it('should reject duplicate username', async () => {
-    await register('alice', 'password123', 'Alice');
-    await expect(register('alice', 'differentpass', 'Alice2')).rejects.toThrow(
-      'Username already taken',
+  it('should reject duplicate email', async () => {
+    await createUser('alice@test.com', 'Alice');
+    await expect(createUser('alice@test.com', 'Alice2')).rejects.toThrow(
+      'Email already registered',
     );
   });
 
-  it('should be case-insensitive for usernames', async () => {
-    await register('Alice', 'password123', 'Alice');
-    await expect(register('alice', 'differentpass', 'Alice2')).rejects.toThrow(
-      'Username already taken',
+  it('should be case-insensitive for emails', async () => {
+    await createUser('Alice@Test.com', 'Alice');
+    await expect(createUser('alice@test.com', 'Alice2')).rejects.toThrow(
+      'Email already registered',
     );
   });
 
-  it('should reject empty username', async () => {
-    await expect(register('', 'password123', 'Alice')).rejects.toThrow(
-      'Username must be at least 3 characters',
+  it('should reject invalid email', async () => {
+    await expect(createUser('notanemail', 'Alice')).rejects.toThrow(
+      'A valid email is required',
     );
   });
 
-  it('should reject short username', async () => {
-    await expect(register('ab', 'password123', 'Alice')).rejects.toThrow(
-      'Username must be at least 3 characters',
-    );
-  });
-
-  it('should reject short password', async () => {
-    await expect(register('alice', '12345', 'Alice')).rejects.toThrow(
-      'Password must be at least 6 characters',
-    );
-  });
-
-  it('should reject empty password', async () => {
-    await expect(register('alice', '', 'Alice')).rejects.toThrow(
-      'Password must be at least 6 characters',
+  it('should reject empty email', async () => {
+    await expect(createUser('', 'Alice')).rejects.toThrow(
+      'A valid email is required',
     );
   });
 
   it('should reject empty display name', async () => {
-    await expect(register('alice', 'password123', '')).rejects.toThrow(
+    await expect(createUser('alice@test.com', '')).rejects.toThrow(
       'Display name is required',
     );
   });
 });
 
-describe('password hashing', () => {
-  it('should store password as bcrypt hash, never plain text', async () => {
-    await register('alice', 'password123', 'Alice');
+describe('sendMagicLink', () => {
+  it('should create a magic token for existing user', async () => {
+    await createUser('alice@test.com', 'Alice');
+    await sendMagicLink('alice@test.com');
 
     const pool = getTestPool();
-    const result = await pool.query(
-      'SELECT password_hash FROM users WHERE username = $1',
-      ['alice'],
-    );
+    const result = await pool.query('SELECT * FROM magic_tokens');
+    expect(result.rows).toHaveLength(1);
+    expect(result.rows[0].token).toHaveLength(64);
+    expect(result.rows[0].used_at).toBeNull();
+  });
 
-    const hash = result.rows[0].password_hash;
-    expect(hash).not.toBe('password123');
-    expect(hash.startsWith('$2b$')).toBe(true);
+  it('should silently succeed for unknown email', async () => {
+    await sendMagicLink('unknown@test.com');
 
-    // Hash should validate with bcrypt
-    const isValid = await bcrypt.compare('password123', hash);
-    expect(isValid).toBe(true);
+    const pool = getTestPool();
+    const result = await pool.query('SELECT * FROM magic_tokens');
+    expect(result.rows).toHaveLength(0);
   });
 });
 
-describe('login', () => {
-  beforeEach(async () => {
-    await register('alice', 'password123', 'Alice');
-  });
+describe('verifyMagicToken', () => {
+  it('should verify a valid token and return user + JWT', async () => {
+    const user = await createUser('alice@test.com', 'Alice');
+    await sendMagicLink('alice@test.com');
 
-  it('should login with correct credentials and return JWT', async () => {
-    const result = await login('alice', 'password123');
+    const pool = getTestPool();
+    const tokenResult = await pool.query('SELECT token FROM magic_tokens');
+    const magicToken = tokenResult.rows[0].token;
 
-    expect(result.user.username).toBe('alice');
+    const result = await verifyMagicToken(magicToken);
+
+    expect(result.user.email).toBe('alice@test.com');
     expect(result.user.displayName).toBe('Alice');
-    expect(result.user.role).toBe('player');
+    expect(result.user.id).toBe(user.id);
     expect(result.token).toBeTruthy();
 
+    // JWT should be verifiable
     const decoded = verifyToken(result.token);
-    expect(decoded.userId).toBe(result.user.id);
+    expect(decoded.userId).toBe(user.id);
+    expect(decoded.email).toBe('alice@test.com');
     expect(decoded.role).toBe('player');
   });
 
-  it('should login case-insensitively', async () => {
-    const result = await login('Alice', 'password123');
-    expect(result.user.username).toBe('alice');
+  it('should reject an already-used token', async () => {
+    await createUser('alice@test.com', 'Alice');
+    await sendMagicLink('alice@test.com');
+
+    const pool = getTestPool();
+    const tokenResult = await pool.query('SELECT token FROM magic_tokens');
+    const magicToken = tokenResult.rows[0].token;
+
+    await verifyMagicToken(magicToken);
+    await expect(verifyMagicToken(magicToken)).rejects.toThrow('Token has already been used');
   });
 
-  it('should reject wrong password', async () => {
-    await expect(login('alice', 'wrongpassword')).rejects.toThrow(
-      'Invalid username or password',
-    );
+  it('should reject an expired token', async () => {
+    await createUser('alice@test.com', 'Alice');
+    await sendMagicLink('alice@test.com');
+
+    const pool = getTestPool();
+    // Manually expire the token
+    await pool.query("UPDATE magic_tokens SET expires_at = NOW() - INTERVAL '1 hour'");
+
+    const tokenResult = await pool.query('SELECT token FROM magic_tokens');
+    const magicToken = tokenResult.rows[0].token;
+
+    await expect(verifyMagicToken(magicToken)).rejects.toThrow('Token has expired');
   });
 
-  it('should reject non-existent user', async () => {
-    await expect(login('nonexistent', 'password123')).rejects.toThrow(
-      'Invalid username or password',
-    );
+  it('should reject an invalid token', async () => {
+    await expect(verifyMagicToken('nonexistent-token')).rejects.toThrow('Invalid or expired token');
   });
 
-  it('should reject empty credentials', async () => {
-    await expect(login('', 'password123')).rejects.toThrow(
-      'Username and password are required',
-    );
-    await expect(login('alice', '')).rejects.toThrow(
-      'Username and password are required',
-    );
+  it('should reject empty token', async () => {
+    await expect(verifyMagicToken('')).rejects.toThrow('Token is required');
   });
 });
 
 describe('JWT verification', () => {
   it('should verify a valid token', async () => {
-    const { token, user } = await register('alice', 'password123', 'Alice');
-    const decoded = verifyToken(token);
+    const user = await createUser('alice@test.com', 'Alice');
+    await sendMagicLink('alice@test.com');
 
+    const pool = getTestPool();
+    const tokenResult = await pool.query('SELECT token FROM magic_tokens');
+    const { token } = await verifyMagicToken(tokenResult.rows[0].token);
+
+    const decoded = verifyToken(token);
     expect(decoded.userId).toBe(user.id);
-    expect(decoded.username).toBe('alice');
+    expect(decoded.email).toBe('alice@test.com');
   });
 
   it('should reject an invalid token', () => {
@@ -176,14 +181,14 @@ describe('JWT verification', () => {
 
   it('should reject a token signed with a different secret', () => {
     const jwt = require('jsonwebtoken');
-    const fakeToken = jwt.sign({ userId: 1, username: 'fake' }, 'wrong-secret');
+    const fakeToken = jwt.sign({ userId: 1, email: 'fake@test.com' }, 'wrong-secret');
     expect(() => verifyToken(fakeToken)).toThrow('Invalid or expired token');
   });
 
   it('should reject an expired token', () => {
     const jwt = require('jsonwebtoken');
     const expiredToken = jwt.sign(
-      { userId: 1, username: 'alice' },
+      { userId: 1, email: 'alice@test.com' },
       process.env.JWT_SECRET!,
       { expiresIn: '0s' },
     );

@@ -1,8 +1,8 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 
 interface AuthUser {
   id: number;
-  username: string;
+  email: string;
   displayName: string;
 }
 
@@ -45,14 +45,23 @@ export function useAuth() {
     setState({ user: null, token: null, loading: false });
   }, []);
 
-  const login = useCallback(async (username: string, password: string) => {
-    const res = await fetch(`${getApiBase()}/api/login`, {
+  const requestMagicLink = useCallback(async (email: string) => {
+    const res = await fetch(`${getApiBase()}/api/auth/send-link`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password }),
+      body: JSON.stringify({ email }),
+    });
+    if (!res.ok) throw new Error('Failed to send login link');
+  }, []);
+
+  const verifyMagicToken = useCallback(async (token: string) => {
+    const res = await fetch(`${getApiBase()}/api/auth/verify`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token }),
     });
     const body = await res.json();
-    if (!res.ok) throw new Error(body.error || 'Login failed');
+    if (!res.ok) throw new Error(body.error || 'Verification failed');
     setAuth(body.user, body.token);
     return body;
   }, [setAuth]);
@@ -62,7 +71,8 @@ export function useAuth() {
     token: state.token,
     loading: state.loading,
     isAuthenticated: !!state.user,
-    login,
+    requestMagicLink,
+    verifyMagicToken,
     logout,
   };
 }

@@ -28,10 +28,18 @@ export async function initTestDb(): Promise<void> {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS users (
       id SERIAL PRIMARY KEY,
-      username VARCHAR(50) NOT NULL UNIQUE,
-      password_hash VARCHAR(255) NOT NULL,
+      email VARCHAR(255) NOT NULL UNIQUE,
       display_name VARCHAR(50) NOT NULL,
       role VARCHAR(20) NOT NULL DEFAULT 'player',
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    );
+
+    CREATE TABLE IF NOT EXISTS magic_tokens (
+      id SERIAL PRIMARY KEY,
+      user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      token VARCHAR(64) NOT NULL UNIQUE,
+      expires_at TIMESTAMPTZ NOT NULL,
+      used_at TIMESTAMPTZ,
       created_at TIMESTAMPTZ DEFAULT NOW()
     );
 
@@ -78,9 +86,6 @@ export async function initTestDb(): Promise<void> {
       action_data JSONB,
       created_at TIMESTAMPTZ DEFAULT NOW()
     );
-
-    -- Migration: add role column if missing (for existing DBs)
-    ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(20) NOT NULL DEFAULT 'player';
   `);
 }
 
@@ -90,7 +95,7 @@ export async function initTestDb(): Promise<void> {
 export async function cleanTestDb(): Promise<void> {
   const pool = getTestPool();
   await pool.query(`
-    TRUNCATE round_actions, rounds, session_players, sessions, users RESTART IDENTITY CASCADE
+    TRUNCATE round_actions, rounds, session_players, sessions, magic_tokens, users RESTART IDENTITY CASCADE
   `);
 }
 

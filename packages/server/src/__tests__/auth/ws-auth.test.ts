@@ -10,10 +10,17 @@ vi.mock('../../auth/db.js', () => {
   };
 });
 
+vi.mock('../../auth/email.js', () => {
+  return {
+    sendEmail: vi.fn().mockResolvedValue(undefined),
+    buildMagicLinkEmail: vi.fn().mockReturnValue({ subject: 'test', html: '<p>test</p>' }),
+  };
+});
+
 import { ConnectionManager } from '../../rooms/ConnectionManager.js';
 import { RoomManager } from '../../rooms/RoomManager.js';
 import { MessageHandler } from '../../rooms/MessageHandler.js';
-import { register } from '../../auth/auth.js';
+import { createUser, sendMagicLink, verifyMagicToken } from '../../auth/auth.js';
 import type { ServerMessage, ClientMessage } from '@hafte-kasif/shared';
 
 let httpServer: Server;
@@ -83,8 +90,18 @@ function waitForMessage(
   });
 }
 
+async function getJwtForUser(email: string, displayName: string): Promise<{ jwt: string; userId: number }> {
+  const user = await createUser(email, displayName);
+  await sendMagicLink(email);
+  const pool = getTestPool();
+  const tokenResult = await pool.query('SELECT token FROM magic_tokens WHERE user_id = $1', [user.id]);
+  const result = await verifyMagicToken(tokenResult.rows[0].token);
+  return { jwt: result.token, userId: user.id };
+}
+
 beforeAll(async () => {
   process.env.JWT_SECRET = 'test-secret-ws';
+  process.env.APP_URL = 'http://localhost:3000';
   await initTestDb();
   port = await createTestServer();
 });
@@ -101,15 +118,15 @@ afterAll(async () => {
 
 describe('WebSocket auth integration', () => {
   it('should use user ID when valid token is provided', async () => {
-    const { token, user } = await register('alice', 'password123', 'Alice');
+    const { jwt, userId } = await getJwtForUser('alice@test.com', 'Alice');
     const { ws, messages } = await createClient(port);
 
-    sendMsg(ws, { type: 'CREATE_ROOM', playerName: 'Alice', mode: 'standard', token });
+    sendMsg(ws, { type: 'CREATE_ROOM', playerName: 'Alice', mode: 'standard', token: jwt });
     const msg = await waitForMessage(messages, 'ROOM_CREATED');
 
     expect(msg.type).toBe('ROOM_CREATED');
     if (msg.type === 'ROOM_CREATED') {
-      expect(msg.playerId).toBe(`user_${user.id}`);
+      expect(msg.playerId).toBe(`user_${userId}`);
     }
 
     ws.close();
@@ -150,9 +167,9 @@ describe('WebSocket auth integration', () => {
     const created = await waitForMessage(hostMsgs, 'ROOM_CREATED') as any;
 
     // Authenticated user joins
-    const { token } = await register('bob', 'password123', 'Bob');
+    const { jwt } = await getJwtForUser('bob@test.com', 'Bob');
     const { ws: joinWs, messages: joinMsgs } = await createClient(port);
-    sendMsg(joinWs, { type: 'JOIN_ROOM', roomCode: created.roomCode, playerName: 'Bob', token });
+    sendMsg(joinWs, { type: 'JOIN_ROOM', roomCode: created.roomCode, playerName: 'Bob', token: jwt });
     const joined = await waitForMessage(joinMsgs, 'ROOM_JOINED');
 
     expect(joined.type).toBe('ROOM_JOINED');

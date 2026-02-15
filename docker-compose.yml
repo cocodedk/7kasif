@@ -10,6 +10,14 @@ services:
       - DATABASE_URL=postgresql://hk:${DB_PASSWORD}@postgres:5432/hafte_kasif
       - JWT_SECRET=${JWT_SECRET}
       - CORS_ORIGIN=https://cocodedk.github.io
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASS=${SMTP_PASS}
+      - SMTP_FROM=${SMTP_FROM}
+      - APP_URL=${APP_URL:-https://7kasif.dk}
+      - ADMIN_EMAIL=${ADMIN_EMAIL}
+      - ADMIN_NAME=${ADMIN_NAME:-Admin}
     depends_on:
       - postgres
     restart: unless-stopped

@@ -1,22 +1,22 @@
 #!/usr/bin/env tsx
 /**
  * Seed an admin user directly in the database.
- * Usage: npx tsx packages/server/src/auth/seed-admin.ts <username> <password> <displayName>
+ * Usage: npx tsx packages/server/src/auth/seed-admin.ts <email> <displayName>
  */
-import { register } from './auth.js';
+import { createUser } from './auth.js';
 import { closePool } from './db.js';
 
 async function main() {
-  const [username, password, displayName] = process.argv.slice(2);
+  const [email, displayName] = process.argv.slice(2);
 
-  if (!username || !password || !displayName) {
-    console.error('Usage: npx tsx seed-admin.ts <username> <password> <displayName>');
+  if (!email || !displayName) {
+    console.error('Usage: npx tsx seed-admin.ts <email> <displayName>');
     process.exit(1);
   }
 
   try {
-    const result = await register(username, password, displayName, 'admin');
-    console.log(`Admin user created: ${result.user.username} (id: ${result.user.id}, role: ${result.user.role})`);
+    const user = await createUser(email, displayName, 'admin');
+    console.log(`Admin user created: ${user.email} (id: ${user.id}, role: ${user.role})`);
   } catch (err: any) {
     console.error(`Failed to create admin: ${err.message}`);
     process.exit(1);
