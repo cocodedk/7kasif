@@ -3,7 +3,7 @@ set -euo pipefail
 
 echo "Deploying Hafte Kasif..."
 
-cd /opt/hafte-kasif
+cd /opt/7kasif
 
 git pull origin main
 
