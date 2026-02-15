@@ -18,3 +18,15 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: cd packages/client && npx vite build
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.HETZNER_HOST }}
+          username: ${{ secrets.HETZNER_USER }}
+          key: ${{ secrets.HETZNER_SSH_KEY }}
+          script: /opt/hafte-kasif/deploy/deploy.sh
