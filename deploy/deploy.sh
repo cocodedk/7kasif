@@ -4,7 +4,8 @@ set -euo pipefail
 echo "Deploying Hafte Kasif..."
 
 # Update system packages
-sudo apt-get update -qq && sudo DEBIAN_FRONTEND=noninteractive apt-get upgrade -y -qq
+export DEBIAN_FRONTEND=noninteractive
+sudo apt-get update -qq && sudo apt-get upgrade -y -qq
 
 cd /opt/7kasif
 

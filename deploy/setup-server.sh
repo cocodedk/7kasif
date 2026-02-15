@@ -25,7 +25,10 @@ fi
 usermod -aG docker "$DEPLOY_USER"
 
 echo "==> Granting deploy user passwordless sudo for apt-get..."
-echo "$DEPLOY_USER ALL=(ALL) NOPASSWD: /usr/bin/apt-get" > /etc/sudoers.d/$DEPLOY_USER
+cat > /etc/sudoers.d/$DEPLOY_USER <<SUDOEOF
+Defaults:$DEPLOY_USER env_keep += "DEBIAN_FRONTEND"
+$DEPLOY_USER ALL=(ALL) NOPASSWD: /usr/bin/apt-get
+SUDOEOF
 chmod 440 /etc/sudoers.d/$DEPLOY_USER
 
 echo "==> Setting up SSH for deploy user..."
