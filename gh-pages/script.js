@@ -7,56 +7,82 @@ function loadLeaderboard() {
   var tableEl = document.getElementById('leaderboard-table');
   var bodyEl = document.getElementById('leaderboard-body');
   var emptyEl = document.getElementById('leaderboard-empty');
+  var resolved = false;
 
-  fetch(API_URL)
-    .then(function (res) {
-      if (!res.ok) throw new Error('API error');
-      return res.json();
-    })
-    .then(function (data) {
-      loadingEl.hidden = true;
+  function showError(reason) {
+    if (resolved) return;
+    resolved = true;
+    console.error('Leaderboard: ' + reason);
+    loadingEl.hidden = true;
+    errorEl.hidden = false;
+  }
 
-      if (!data.length) {
-        emptyEl.hidden = false;
-        return;
-      }
+  function showEmpty() {
+    if (resolved) return;
+    resolved = true;
+    loadingEl.hidden = true;
+    emptyEl.hidden = false;
+  }
 
-      bodyEl.innerHTML = '';
-      data.forEach(function (entry, i) {
-        var rank = i + 1;
-        var row = document.createElement('tr');
+  // Timeout: if fetch takes more than 5 seconds, show error
+  setTimeout(function () {
+    showError('Request timed out');
+  }, 5000);
 
-        var rankClass = '';
-        if (rank === 1) rankClass = 'rank-1';
-        else if (rank === 2) rankClass = 'rank-2';
-        else if (rank === 3) rankClass = 'rank-3';
+  try {
+    fetch(API_URL)
+      .then(function (res) {
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.json();
+      })
+      .then(function (data) {
+        if (resolved) return;
+        resolved = true;
+        loadingEl.hidden = true;
 
-        var netClass = '';
-        if (entry.netScore > 0) netClass = 'net-positive';
-        else if (entry.netScore < 0) netClass = 'net-negative';
+        if (!Array.isArray(data) || data.length === 0) {
+          emptyEl.hidden = false;
+          return;
+        }
 
-        var name = entry.displayName || entry.playerName || 'Unknown';
+        bodyEl.innerHTML = '';
+        data.forEach(function (entry, i) {
+          var rank = i + 1;
+          var row = document.createElement('tr');
 
-        row.innerHTML =
-          '<td class="' + rankClass + '">' + rank + '</td>' +
-          '<td>' + escapeHtml(name) + '</td>' +
-          '<td>' + entry.totalSessions + '</td>' +
-          '<td>' + entry.totalRoundsWon + '</td>' +
-          '<td>' + entry.totalRoundsLost + '</td>' +
-          '<td>' + entry.totalPlusClusters + '</td>' +
-          '<td>' + entry.totalMinusClusters + '</td>' +
-          '<td class="' + netClass + '">' + (entry.netScore > 0 ? '+' : '') + entry.netScore + '</td>';
+          var rankClass = '';
+          if (rank === 1) rankClass = 'rank-1';
+          else if (rank === 2) rankClass = 'rank-2';
+          else if (rank === 3) rankClass = 'rank-3';
 
-        bodyEl.appendChild(row);
+          var netClass = '';
+          var net = Number(entry.netScore) || 0;
+          if (net > 0) netClass = 'net-positive';
+          else if (net < 0) netClass = 'net-negative';
+
+          var name = entry.displayName || entry.playerName || 'Unknown';
+
+          row.innerHTML =
+            '<td class="' + rankClass + '">' + rank + '</td>' +
+            '<td>' + escapeHtml(name) + '</td>' +
+            '<td>' + (Number(entry.totalSessions) || 0) + '</td>' +
+            '<td>' + (Number(entry.totalRoundsWon) || 0) + '</td>' +
+            '<td>' + (Number(entry.totalRoundsLost) || 0) + '</td>' +
+            '<td>' + (Number(entry.totalPlusClusters) || 0) + '</td>' +
+            '<td>' + (Number(entry.totalMinusClusters) || 0) + '</td>' +
+            '<td class="' + netClass + '">' + (net > 0 ? '+' : '') + net + '</td>';
+
+          bodyEl.appendChild(row);
+        });
+
+        tableEl.hidden = false;
+      })
+      .catch(function (err) {
+        showError(err.message || 'Fetch failed');
       });
-
-      tableEl.hidden = false;
-    })
-    .catch(function (err) {
-      console.error('Leaderboard fetch failed:', err);
-      loadingEl.hidden = true;
-      errorEl.hidden = false;
-    });
+  } catch (err) {
+    showError(err.message || 'Script error');
+  }
 }
 
 function escapeHtml(str) {
