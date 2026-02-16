@@ -35,11 +35,17 @@ describe('Ace — last card win', () => {
     expect(r2.ok).toBe(true);
     if (!r2.ok) return;
 
-    log('Verify: chain cleared, turn advances to p3');
+    log('Verify: chain cleared, player stays on turn');
     expect(r2.newState.pendingEffect).toBeNull();
-    expect(r2.newState.players[r2.newState.currentPlayerIndex].id).toBe('p3');
+    expect(r2.newState.players[r2.newState.currentPlayerIndex].id).toBe('p2');
     const p2 = r2.newState.players.find(p => p.id === 'p2')!;
     expect(p2.hand.length).toBe(1); // drew 1 card
+
+    log('p2 passes to end turn');
+    const r3 = applyAction(r2.newState, 'p2', { type: 'PASS_TURN' });
+    expect(r3.ok).toBe(true);
+    if (!r3.ok) return;
+    expect(r3.newState.players[r3.newState.currentPlayerIndex].id).toBe('p3');
   });
 
   it('should win when 4 aces are played leaving hand empty', () => {

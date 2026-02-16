@@ -29,17 +29,37 @@ describe('Ten — 8-add boomerang back to 8-player (3 players)', () => {
     if (!r2.ok) return;
     expect(r2.newState.players[r2.newState.currentPlayerIndex].id).toBe('p1');
 
-    log('p1 has no chain card — draws 5');
+    log('p1 has no chain card — draws penalty one at a time');
+    log('First draw: transition to seven-penalty');
     const r3 = applyAction(r2.newState, 'p1', { type: 'DRAW_CARD' });
     expect(r3.ok).toBe(true);
     if (!r3.ok) return;
+    expect(r3.newState.pendingEffect?.type).toBe('seven-penalty');
+    if (r3.newState.pendingEffect?.type === 'seven-penalty') {
+      expect(r3.newState.pendingEffect.penalty).toBe(5);
+      expect(r3.newState.pendingEffect.drawn).toBe(1);
+    }
 
-    log('Verify: p1 drew 5 cards (had 2, now 7)');
-    const p1 = r3.newState.players.find(p => p.id === 'p1')!;
+    log('Draw remaining 4 cards (penalty=5 total)');
+    let currentState = r3.newState;
+    for (let i = 2; i <= 5; i++) {
+      const draw = applyAction(currentState, 'p1', { type: 'DRAW_CARD' });
+      expect(draw.ok).toBe(true);
+      if (!draw.ok) return;
+      currentState = draw.newState;
+    }
+
+    log('Verify: p1 has 7 cards (2 + 5)');
+    const p1 = currentState.players.find(p => p.id === 'p1')!;
     expect(p1.hand.length).toBe(7);
 
+    log('p1 passes turn after drawing penalty');
+    const r4 = applyAction(currentState, 'p1', { type: 'PASS_TURN' });
+    expect(r4.ok).toBe(true);
+    if (!r4.ok) return;
+
     log('Verify: chain cleared after p1 drew');
-    expect(r3.newState.pendingEffect).toBeNull();
+    expect(r4.newState.pendingEffect).toBeNull();
   });
 
   it('what if p1 plays 10 instead — bounces penalty back through p3 to p2', () => {
@@ -88,16 +108,36 @@ describe('Ten — 8-add boomerang back to 8-player (3 players)', () => {
 
     log(`Turn is at ${currentPlayer} — they started the 8-add!`);
 
-    log('p3 has no chain card — draws 5 (their own added penalty!)');
+    log('p3 has no chain card — draws 5 (their own added penalty!) one at a time');
+    log('First draw: transition to seven-penalty');
     const r4 = applyAction(r3.newState, 'p3', { type: 'DRAW_CARD' });
     expect(r4.ok).toBe(true);
     if (!r4.ok) return;
+    expect(r4.newState.pendingEffect?.type).toBe('seven-penalty');
+    if (r4.newState.pendingEffect?.type === 'seven-penalty') {
+      expect(r4.newState.pendingEffect.penalty).toBe(5);
+      expect(r4.newState.pendingEffect.drawn).toBe(1);
+    }
 
-    log('Verify: p3 drew 5 cards (had 1 Ks, now 6)');
-    const p3 = r4.newState.players.find(p => p.id === 'p3')!;
+    log('Draw remaining 4 cards (penalty=5 total)');
+    let state2 = r4.newState;
+    for (let i = 2; i <= 5; i++) {
+      const draw = applyAction(state2, 'p3', { type: 'DRAW_CARD' });
+      expect(draw.ok).toBe(true);
+      if (!draw.ok) return;
+      state2 = draw.newState;
+    }
+
+    log('Verify: p3 has 6 cards (1 + 5)');
+    const p3 = state2.players.find(p => p.id === 'p3')!;
     expect(p3.hand.length).toBe(6);
 
+    log('p3 passes turn after drawing penalty');
+    const r5 = applyAction(state2, 'p3', { type: 'PASS_TURN' });
+    expect(r5.ok).toBe(true);
+    if (!r5.ok) return;
+
     log('Verify: chain cleared — p3 ate their own medicine');
-    expect(r4.newState.pendingEffect).toBeNull();
+    expect(r5.newState.pendingEffect).toBeNull();
   });
 });

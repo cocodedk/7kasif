@@ -33,10 +33,16 @@ describe('Ace — chain two aces then draw', () => {
     expect(r3.ok).toBe(true);
     if (!r3.ok) return;
 
-    log('Verify: chain cleared, turn advances to p3');
+    log('Verify: chain cleared, player stays on turn');
     expect(r3.newState.pendingEffect).toBeNull();
-    expect(r3.newState.players[r3.newState.currentPlayerIndex].id).toBe('p3');
+    expect(r3.newState.players[r3.newState.currentPlayerIndex].id).toBe('p2');
     const p2 = r3.newState.players.find(p => p.id === 'p2')!;
     expect(p2.hand.length).toBe(2); // 9c + drawn card
+
+    log('p2 passes to end turn');
+    const r4 = applyAction(r3.newState, 'p2', { type: 'PASS_TURN' });
+    expect(r4.ok).toBe(true);
+    if (!r4.ok) return;
+    expect(r4.newState.players[r4.newState.currentPlayerIndex].id).toBe('p3');
   });
 });

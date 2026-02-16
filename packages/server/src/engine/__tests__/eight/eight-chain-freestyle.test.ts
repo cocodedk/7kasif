@@ -28,7 +28,21 @@ describe('Eight — any suit allowed in freestyle chain', () => {
     expect(r2.ok).toBe(true);
     if (!r2.ok) return;
 
-    log('Verify: redirect accepted, chain cleared');
-    expect(r2.newState.pendingEffect).toBeNull();
+    log('Verify: redirect accepted, seven-penalty active on target');
+    expect(r2.newState.pendingEffect).toEqual({
+      type: 'seven-penalty', penalty: 2, drawn: 1, suit: 'hearts',
+    });
+
+    // Target (p2, 2 ahead from p3 in 3-player) draws second card then passes
+    const r3 = applyAction(r2.newState, 'p2', { type: 'DRAW_CARD' });
+    expect(r3.ok).toBe(true);
+    if (!r3.ok) return;
+
+    const r4 = applyAction(r3.newState, 'p2', { type: 'PASS_TURN' });
+    expect(r4.ok).toBe(true);
+    if (!r4.ok) return;
+
+    log('Verify: penalty cleared after pass');
+    expect(r4.newState.pendingEffect).toBeNull();
   });
 });

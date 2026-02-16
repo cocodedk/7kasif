@@ -61,16 +61,36 @@ describe('Ten — reverse after double 8-add (7→8add→8add→10)', () => {
     log('Verify: turn goes to p4 (counter-clockwise from p1)');
     expect(r4.newState.players[r4.newState.currentPlayerIndex].id).toBe('p4');
 
-    log('p4 has no chain card left — draws 8');
+    log('p4 has no chain card left — draws penalty one at a time');
+    log('First draw: transition to seven-penalty');
     const r5 = applyAction(r4.newState, 'p4', { type: 'DRAW_CARD' });
     expect(r5.ok).toBe(true);
     if (!r5.ok) return;
+    expect(r5.newState.pendingEffect?.type).toBe('seven-penalty');
+    if (r5.newState.pendingEffect?.type === 'seven-penalty') {
+      expect(r5.newState.pendingEffect.penalty).toBe(8);
+      expect(r5.newState.pendingEffect.drawn).toBe(1);
+    }
 
-    log('Verify: p4 drew 8 cards (had 1 Qd, now 9)');
-    const p4 = r5.newState.players.find(p => p.id === 'p4')!;
+    log('Draw remaining 7 cards (penalty=8 total)');
+    let currentState = r5.newState;
+    for (let i = 2; i <= 8; i++) {
+      const draw = applyAction(currentState, 'p4', { type: 'DRAW_CARD' });
+      expect(draw.ok).toBe(true);
+      if (!draw.ok) return;
+      currentState = draw.newState;
+    }
+
+    log('Verify: p4 has 9 cards (1 + 8)');
+    const p4 = currentState.players.find(p => p.id === 'p4')!;
     expect(p4.hand.length).toBe(9);
 
+    log('p4 passes turn after drawing penalty');
+    const r6 = applyAction(currentState, 'p4', { type: 'PASS_TURN' });
+    expect(r6.ok).toBe(true);
+    if (!r6.ok) return;
+
     log('Verify: chain cleared');
-    expect(r5.newState.pendingEffect).toBeNull();
+    expect(r6.newState.pendingEffect).toBeNull();
   });
 });
