@@ -5,6 +5,19 @@ import type { Card, PlayerView, Suit } from './types.js';
  * Mirrors the server validator logic but works with PlayerView instead of GameState.
  */
 export function isCardPlayable(card: Card, view: PlayerView): boolean {
+  // During queen-reveal: no cards playable (must reveal first)
+  if (view.pendingEffect?.type === 'queen-reveal') {
+    return false;
+  }
+
+  // During seven-penalty: no cards playable until minimum drawn
+  if (view.pendingEffect?.type === 'seven-penalty') {
+    if (view.pendingEffect.drawn < view.pendingEffect.penalty) {
+      return false;
+    }
+    // After minimum drawn: normal playability rules (fall through below)
+  }
+
   // During a 7-chain: only 7, 8, 10 (with suit restrictions in standard mode)
   if (view.pendingEffect?.type === 'seven-chain') {
     if (card.value === 7) return true;

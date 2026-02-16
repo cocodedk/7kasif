@@ -62,6 +62,7 @@ export function createTestState(options: {
     name: `Player ${i + 1}`,
     hand: [...hand],
     revealedCards: [],
+    lockedCards: [],
     hasAnnouncedOneCard: false,
   }));
 

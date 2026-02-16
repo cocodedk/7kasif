@@ -20,5 +20,8 @@ describe('Queen — match by value', () => {
 
     log('Verify: turn advances to p3');
     expect(r1.newState.players[r1.newState.currentPlayerIndex].id).toBe('p3');
+
+    log('Verify: pendingEffect set for queen-reveal');
+    expect(r1.newState.pendingEffect).toEqual({ type: 'queen-reveal', targetPlayerId: 'p3' });
   });
 });

@@ -38,5 +38,8 @@ describe('Queen — no draw effect on other players', () => {
     log('Verify: no PLAYER_SKIPPED events');
     const skipEvents = r1.events.filter(e => e.type === 'PLAYER_SKIPPED');
     expect(skipEvents.length).toBe(0);
+
+    log('Verify: pendingEffect set for queen-reveal');
+    expect(r1.newState.pendingEffect).toEqual({ type: 'queen-reveal', targetPlayerId: 'p3' });
   });
 });

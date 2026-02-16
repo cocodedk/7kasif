@@ -20,18 +20,42 @@ describe('Seven — draw penalty with deck recycle', () => {
     // Add extra cards to discard pile for recycling
     state.discardPile.push(c('3s'), c('6s'), c('5d'));
 
-    log('p2 draws 4 cards (deck has only 2, discard recycling needed)');
+    log('p2 draw 1/4 (transitions to seven-penalty)');
     const r1 = applyAction(state, 'p2', { type: 'DRAW_CARD' });
     expect(r1.ok).toBe(true);
     if (!r1.ok) return;
+    expect(r1.newState.pendingEffect).toEqual({ type: 'seven-penalty', penalty: 4, drawn: 1, suit: 'hearts' });
+    expect(r1.newState.players.find(p => p.id === 'p2')!.hand.length).toBe(3);
 
-    log('Verify: p2 has 6 cards total (2 original + 4 drawn), pending effect cleared');
-    const p2 = r1.newState.players.find(p => p.id === 'p2')!;
-    // Should have drawn 4 total (2 from deck + 2 from recycled discard)
-    expect(p2.hand.length).toBe(6); // 2 original + 4 drawn
-    expect(r1.newState.pendingEffect).toBeNull();
+    log('p2 draw 2/4');
+    const r2 = applyAction(r1.newState, 'p2', { type: 'DRAW_CARD' });
+    expect(r2.ok).toBe(true);
+    if (!r2.ok) return;
+    expect(r2.newState.pendingEffect).toEqual({ type: 'seven-penalty', penalty: 4, drawn: 2, suit: 'hearts' });
+    expect(r2.newState.players.find(p => p.id === 'p2')!.hand.length).toBe(4);
+
+    log('p2 draw 3/4 (deck should recycle here)');
+    const r3 = applyAction(r2.newState, 'p2', { type: 'DRAW_CARD' });
+    expect(r3.ok).toBe(true);
+    if (!r3.ok) return;
+    expect(r3.newState.pendingEffect).toEqual({ type: 'seven-penalty', penalty: 4, drawn: 3, suit: 'hearts' });
+    expect(r3.newState.players.find(p => p.id === 'p2')!.hand.length).toBe(5);
+
+    log('p2 draw 4/4');
+    const r4 = applyAction(r3.newState, 'p2', { type: 'DRAW_CARD' });
+    expect(r4.ok).toBe(true);
+    if (!r4.ok) return;
+    expect(r4.newState.pendingEffect).toEqual({ type: 'seven-penalty', penalty: 4, drawn: 4, suit: 'hearts' });
+    expect(r4.newState.players.find(p => p.id === 'p2')!.hand.length).toBe(6);
+
+    log('p2 passes (penalty complete)');
+    const r5 = applyAction(r4.newState, 'p2', { type: 'PASS_TURN' });
+    expect(r5.ok).toBe(true);
+    if (!r5.ok) return;
+    expect(r5.newState.pendingEffect).toBeNull();
+    expect(r5.newState.players.find(p => p.id === 'p2')!.hand.length).toBe(6);
     // Discard pile should have at least the top card remaining
-    expect(r1.newState.discardPile.length).toBeGreaterThanOrEqual(1);
+    expect(r5.newState.discardPile.length).toBeGreaterThanOrEqual(1);
   });
 
   it('should handle drawing penalty when deck has exactly enough cards', () => {
@@ -50,13 +74,25 @@ describe('Seven — draw penalty with deck recycle', () => {
     expect(r1.ok).toBe(true);
     if (!r1.ok) return;
 
-    log('p3 draws 2 cards (deck has exactly 2)');
+    log('p3 draw 1/2 (transitions to seven-penalty)');
     const r2 = applyAction(r1.newState, 'p3', { type: 'DRAW_CARD' });
     expect(r2.ok).toBe(true);
     if (!r2.ok) return;
+    expect(r2.newState.pendingEffect).toEqual({ type: 'seven-penalty', penalty: 2, drawn: 1, suit: 'hearts' });
+    expect(r2.newState.players.find(p => p.id === 'p3')!.hand.length).toBe(3);
 
-    log('Verify: p3 has 4 cards total (2 original + 2 drawn)');
-    const p3 = r2.newState.players.find(p => p.id === 'p3')!;
-    expect(p3.hand.length).toBe(4); // 2 + 2
+    log('p3 draw 2/2');
+    const r3 = applyAction(r2.newState, 'p3', { type: 'DRAW_CARD' });
+    expect(r3.ok).toBe(true);
+    if (!r3.ok) return;
+    expect(r3.newState.pendingEffect).toEqual({ type: 'seven-penalty', penalty: 2, drawn: 2, suit: 'hearts' });
+    expect(r3.newState.players.find(p => p.id === 'p3')!.hand.length).toBe(4);
+
+    log('p3 passes (penalty complete)');
+    const r4 = applyAction(r3.newState, 'p3', { type: 'PASS_TURN' });
+    expect(r4.ok).toBe(true);
+    if (!r4.ok) return;
+    expect(r4.newState.pendingEffect).toBeNull();
+    expect(r4.newState.players.find(p => p.id === 'p3')!.hand.length).toBe(4);
   });
 });

@@ -1,5 +1,5 @@
 import type {
-  GameState, Card, Action, PlayCardAction, GameEvent, Player, Direction,
+  GameState, Card, Action, PlayCardAction, RevealCardAction, GameEvent, Player, Direction,
 } from '@hafte-kasif/shared';
 import { cardEquals, handValue, FINISH_POINTS } from '@hafte-kasif/shared';
 
@@ -12,6 +12,7 @@ function cloneState(state: GameState): GameState {
       ...p,
       hand: [...p.hand],
       revealedCards: [...p.revealedCards],
+      lockedCards: [...p.lockedCards],
     })),
     deck: [...state.deck],
     discardPile: [...state.discardPile],
@@ -35,6 +36,9 @@ function removeCardFromHand(player: Player, card: Card): void {
   // Also remove from revealed if it was revealed
   const revIdx = player.revealedCards.findIndex(c => cardEquals(c, card));
   if (revIdx !== -1) player.revealedCards.splice(revIdx, 1);
+  // Also remove from locked if it was locked
+  const lockIdx = player.lockedCards.findIndex(c => cardEquals(c, card));
+  if (lockIdx !== -1) player.lockedCards.splice(lockIdx, 1);
 }
 
 function drawCards(state: GameState, playerIndex: number, count: number): GameEvent[] {
@@ -71,6 +75,8 @@ function reshuffleDeck(state: GameState): void {
 
 function advanceTurn(state: GameState, steps: number = 1): void {
   state.currentPlayerIndex = nextPlayerIndex(state, state.currentPlayerIndex, steps);
+  // Clear lockedCards for the player whose turn it now is
+  state.players[state.currentPlayerIndex].lockedCards = [];
 }
 
 // ─── Win/Lose Calculation ───
@@ -101,19 +107,44 @@ function calculateGameEnd(state: GameState, winnerId: string, finishingCard: Car
     points = FINISH_POINTS.ace_chain_full;
   }
 
-  // Find loser(s) — player(s) with highest hand value
+  // Find loser(s) — 7s in hand take priority
   const otherPlayers = state.players.filter(p => p.id !== winnerId);
-  const handValues = otherPlayers.map(p => ({ player: p, value: handValue(p.hand) }));
-  const maxValue = Math.max(...handValues.map(h => h.value));
-  const losers = handValues.filter(h => h.value === maxValue);
+
+  // Count 7s in each player's hand
+  const withSevens = otherPlayers
+    .map(p => ({ player: p, sevens: p.hand.filter(c => c.value === 7).length }))
+    .filter(p => p.sevens > 0);
+
+  let candidates: { player: typeof otherPlayers[0]; value: number }[];
+
+  if (withSevens.length > 0) {
+    // Players with 7s are the loser candidates
+    const maxSevens = Math.max(...withSevens.map(p => p.sevens));
+    const topSevens = withSevens.filter(p => p.sevens === maxSevens);
+
+    if (topSevens.length === 1) {
+      // One player has the most 7s — they lose
+      candidates = [{ player: topSevens[0].player, value: handValue(topSevens[0].player.hand) }];
+    } else {
+      // Tied on 7 count — compare hand values among them
+      candidates = topSevens.map(p => ({ player: p.player, value: handValue(p.player.hand) }));
+      const maxVal = Math.max(...candidates.map(c => c.value));
+      candidates = candidates.filter(c => c.value === maxVal);
+    }
+  } else {
+    // No one has 7s — normal hand value comparison
+    candidates = otherPlayers.map(p => ({ player: p, value: handValue(p.hand) }));
+    const maxVal = Math.max(...candidates.map(c => c.value));
+    candidates = candidates.filter(c => c.value === maxVal);
+  }
 
   let reversed = false;
-  if (losers.length > 1) {
-    // Tie for highest — reversal!
+  if (candidates.length > 1) {
+    // Tie — reversal!
     reversed = true;
   }
 
-  const loserIds = losers.map(l => l.player.id);
+  const loserIds = candidates.map(l => l.player.id);
 
   state.phase = 'finished';
   state.winner = reversed ? null : winnerId;
@@ -148,6 +179,11 @@ function applyPlayCard(state: GameState, playerId: string, action: PlayCardActio
   // Handle chain reaction counters first
   if (state.pendingEffect?.type === 'seven-chain') {
     return applyChainCounter(state, playerId, action, events);
+  }
+
+  // During seven-penalty (drawn >= penalty): clear effect, play as normal
+  if (state.pendingEffect?.type === 'seven-penalty') {
+    state.pendingEffect = null;
   }
 
   // Handle Ace chain continuation
@@ -294,16 +330,17 @@ function applyCardEffect(
     }
 
     case 'queen': {
-      // Auto-reveal a random card from the next player's hand
+      // Set pending effect — next player must choose a card to reveal
       const nextIdx = nextPlayerIndex(state, playerIdx, 1);
       const nextPlayer = state.players[nextIdx];
       const unrevealed = nextPlayer.hand.filter(
         c => !nextPlayer.revealedCards.some(r => cardEquals(r, c)),
       );
       if (unrevealed.length > 0) {
-        const revealCard = unrevealed[Math.floor(Math.random() * unrevealed.length)];
-        nextPlayer.revealedCards.push(revealCard);
-        events.push({ type: 'CARD_REVEALED', playerId: nextPlayer.id, card: revealCard });
+        state.pendingEffect = {
+          type: 'queen-reveal',
+          targetPlayerId: nextPlayer.id,
+        };
       }
       advanceTurn(state);
       return events;
@@ -336,22 +373,28 @@ function applyChainCounter(
   const { card } = action;
 
   if (card.value === 7) {
-    // Add 2 to penalty, pass to next
+    // Add 2 to penalty, update chain suit to this 7's suit, pass to next
     chain.penalty += 2;
+    chain.suit = card.suit;
     advanceTurn(state);
     return events;
   }
 
   if (card.value === 8) {
     if (action.chainChoice === 'redirect') {
-      // Redirect penalty to player 2 positions ahead
+      // Redirect penalty to player 2 positions ahead — they draw incrementally
       const playerIdx = getPlayerIndex(state, playerId);
       const targetIdx = nextPlayerIndex(state, playerIdx, 2);
       const target = state.players[targetIdx];
       events.push({ type: 'CHAIN_REACTION', penalty: chain.penalty, targetPlayerId: target.id });
-      events.push(...drawCards(state, targetIdx, chain.penalty));
-      state.pendingEffect = null;
-      advanceTurn(state);
+      events.push(...drawCards(state, targetIdx, 1));
+      state.pendingEffect = {
+        type: 'seven-penalty',
+        penalty: chain.penalty,
+        drawn: 1,
+        suit: chain.suit,
+      };
+      state.currentPlayerIndex = targetIdx;
     } else {
       // Add 3 to penalty
       chain.penalty += 3;
@@ -378,20 +421,36 @@ function applyDrawCard(state: GameState, playerId: string): GameEvent[] {
   const playerIdx = getPlayerIndex(state, playerId);
 
   if (state.pendingEffect?.type === 'seven-chain') {
-    // Accept the chain penalty
+    // Accept the chain — transition to incremental penalty drawing
     const penalty = state.pendingEffect.penalty;
     events.push({ type: 'CHAIN_REACTION', penalty, targetPlayerId: playerId });
-    events.push(...drawCards(state, playerIdx, penalty));
-    state.pendingEffect = null;
-    advanceTurn(state);
+    events.push(...drawCards(state, playerIdx, 1));
+    state.pendingEffect = {
+      type: 'seven-penalty',
+      penalty,
+      drawn: 1,
+      suit: state.pendingEffect.suit,
+    };
+    // Stay on current player — they must keep drawing
+    return events;
+  }
+
+  if (state.pendingEffect?.type === 'seven-penalty') {
+    const pen = state.pendingEffect;
+    events.push(...drawCards(state, playerIdx, 1));
+    pen.drawn++;
+    if (pen.drawn > pen.penalty) {
+      // Took the optional extra draw — stay on player so they can play or pass
+      state.pendingEffect = null;
+    }
+    // Otherwise stay on current player
     return events;
   }
 
   if (state.pendingEffect?.type === 'ace-chain') {
-    // Draw during Ace chain — turn ends
+    // Draw during Ace chain — stay on player so they can play or pass
     events.push(...drawCards(state, playerIdx, 1));
     state.pendingEffect = null;
-    advanceTurn(state);
     return events;
   }
 
@@ -405,8 +464,33 @@ function applyDrawCard(state: GameState, playerId: string): GameEvent[] {
 
 function applyPassTurn(state: GameState, playerId: string): GameEvent[] {
   const events: GameEvent[] = [];
+  // Clear seven-penalty effect when passing (drawn >= penalty)
+  if (state.pendingEffect?.type === 'seven-penalty') {
+    state.pendingEffect = null;
+  }
   events.push({ type: 'TURN_PASSED', playerId });
   advanceTurn(state);
+  return events;
+}
+
+// ─── Reveal Card (Queen) ───
+
+function applyRevealCard(state: GameState, playerId: string, action: RevealCardAction): GameEvent[] {
+  const events: GameEvent[] = [];
+  const player = state.players.find(p => p.id === playerId)!;
+  const { card } = action;
+
+  // Add to revealedCards (visible to all, persists until played)
+  player.revealedCards.push(card);
+  // Add to lockedCards (can't play this turn, cleared on next advanceTurn)
+  player.lockedCards.push(card);
+
+  events.push({ type: 'CARD_REVEALED', playerId, card });
+
+  // Clear the queen-reveal pending effect
+  state.pendingEffect = null;
+
+  // Do NOT advance turn — player takes their normal turn next
   return events;
 }
 
@@ -473,6 +557,9 @@ export function applyEffect(
       break;
     case 'CHALLENGE_NO_ANNOUNCEMENT':
       events = applyChallengeNoAnnouncement(newState, playerId, action.targetPlayerId);
+      break;
+    case 'REVEAL_CARD':
+      events = applyRevealCard(newState, playerId, action);
       break;
   }
 

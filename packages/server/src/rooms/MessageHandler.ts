@@ -22,6 +22,7 @@ export class MessageHandler {
     }
 
     const playerId = this.connections.getPlayerIdByWs(ws);
+    console.log(`[MSG] type=${msg.type} playerId=${playerId || 'NONE'}`);
 
     switch (msg.type) {
       case 'CREATE_ROOM':
@@ -46,12 +47,14 @@ export class MessageHandler {
   }
 
   private resolvePlayerId(token?: string): { playerId: string; userId: number } | null {
+    console.log(`[AUTH] resolvePlayerId token=${token ? token.substring(0, 20) + '...' : 'MISSING'}`);
     if (token) {
       try {
         const decoded = verifyToken(token);
+        console.log(`[AUTH] verified userId=${decoded.userId}`);
         return { playerId: `user_${decoded.userId}`, userId: decoded.userId };
-      } catch {
-        // Invalid token
+      } catch (err: any) {
+        console.error(`[AUTH] verifyToken failed:`, err.message);
       }
     }
     return null;
@@ -160,7 +163,7 @@ export class MessageHandler {
     room.gameState = result.newState;
     room.lastActivityAt = Date.now();
 
-    this.broadcastGameState(room.code);
+    this.broadcastGameState(room.code, result.events);
 
     // Check for game over — record round result in tournament
     const gameOverEvent = result.events.find(e => e.type === 'GAME_OVER');
@@ -239,7 +242,7 @@ export class MessageHandler {
     }
   }
 
-  private broadcastGameState(roomCode: string): void {
+  private broadcastGameState(roomCode: string, events?: import('@hafte-kasif/shared').GameEvent[]): void {
     const room = this.rooms.getRoom(roomCode);
     if (!room || !room.gameState) return;
 
@@ -248,6 +251,7 @@ export class MessageHandler {
       this.connections.send(p.id, {
         type: 'GAME_STATE',
         state: view,
+        ...(events && events.length > 0 ? { events } : {}),
       } satisfies ServerMessage);
     }
   }

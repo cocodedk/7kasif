@@ -21,5 +21,8 @@ describe('Queen — in reverse direction', () => {
 
     log('Verify: turn goes to p1 (counter-clockwise from p2)');
     expect(r1.newState.players[r1.newState.currentPlayerIndex].id).toBe('p1');
+
+    log('Verify: pendingEffect targets p1');
+    expect(r1.newState.pendingEffect).toEqual({ type: 'queen-reveal', targetPlayerId: 'p1' });
   });
 });

@@ -68,12 +68,15 @@ export class RoomManager {
   }
 
   getRoomByPlayerId(playerId: string): Room | undefined {
+    let fallback: Room | undefined;
     for (const room of this.rooms.values()) {
       if (room.players.some(p => p.id === playerId)) {
-        return room;
+        // Prefer rooms with an active game
+        if (room.gameState) return room;
+        fallback ??= room;
       }
     }
-    return undefined;
+    return fallback;
   }
 
   startGame(code: string, cardsPerPlayer: number): GameState | null {
@@ -235,6 +238,7 @@ export class RoomManager {
     return {
       phase: state.phase,
       myHand: me.hand,
+      myRevealedCards: me.revealedCards,
       opponents,
       currentPlayerId: state.players[state.currentPlayerIndex].id,
       direction: state.direction,

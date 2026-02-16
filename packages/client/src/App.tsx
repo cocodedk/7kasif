@@ -130,6 +130,7 @@ function AuthenticatedGame({
         playerId={playerId}
         error={state.error}
         send={send}
+        lastEvents={state.lastEvents}
       />
     );
   }

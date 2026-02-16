@@ -6,7 +6,7 @@ describe('Seven — 7 + 7 + 10 reverse', () => {
   it('should reverse direction with accumulated penalty of 4', () => {
     const state = createTestState({
       hands: [
-        [c('10h'), c('5s')],
+        [c('10d'), c('5s')],      // 10d matches last 7d
         [c('7h'), c('9c')],
         [c('7d'), c('Ks')],
       ],
@@ -23,8 +23,8 @@ describe('Seven — 7 + 7 + 10 reverse', () => {
     expect(r2.ok).toBe(true);
     if (!r2.ok) return;
 
-    log('p1 plays 10♥ (reverses direction)');
-    const r3 = applyAction(r2.newState, 'p1', { type: 'PLAY_CARD', card: c('10h') });
+    log('p1 plays 10♦ (reverses direction)');
+    const r3 = applyAction(r2.newState, 'p1', { type: 'PLAY_CARD', card: c('10d') });
     expect(r3.ok).toBe(true);
     if (!r3.ok) return;
 

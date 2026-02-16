@@ -19,11 +19,19 @@ describe('Queen — only next player affected in 4-player game', () => {
     expect(r1.ok).toBe(true);
     if (!r1.ok) return;
 
-    log('Verify: only p3 (next player) has a revealed card');
-    const p1 = r1.newState.players.find(p => p.id === 'p1')!;
-    const p2 = r1.newState.players.find(p => p.id === 'p2')!;
-    const p3 = r1.newState.players.find(p => p.id === 'p3')!;
-    const p4 = r1.newState.players.find(p => p.id === 'p4')!;
+    log('Verify: pendingEffect targets p3');
+    expect(r1.newState.pendingEffect).toEqual({ type: 'queen-reveal', targetPlayerId: 'p3' });
+
+    log('p3 reveals a card');
+    const r2 = applyAction(r1.newState, 'p3', { type: 'REVEAL_CARD', card: c('6d') });
+    expect(r2.ok).toBe(true);
+    if (!r2.ok) return;
+
+    log('Verify: only p3 has a revealed card');
+    const p1 = r2.newState.players.find(p => p.id === 'p1')!;
+    const p2 = r2.newState.players.find(p => p.id === 'p2')!;
+    const p3 = r2.newState.players.find(p => p.id === 'p3')!;
+    const p4 = r2.newState.players.find(p => p.id === 'p4')!;
 
     expect(p1.revealedCards.length).toBe(0);
     expect(p2.revealedCards.length).toBe(0);

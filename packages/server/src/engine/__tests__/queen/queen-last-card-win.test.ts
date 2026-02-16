@@ -23,5 +23,8 @@ describe('Queen — last card win', () => {
     const gameOver = r1.events.find(e => e.type === 'GAME_OVER');
     expect(gameOver).toBeDefined();
     expect(gameOver!.points).toBe(1);
+
+    log('Verify: no pendingEffect (win happens before queen effect)');
+    expect(r1.newState.pendingEffect).toBeNull();
   });
 });

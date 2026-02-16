@@ -24,5 +24,8 @@ describe('Queen — basic play', () => {
     log('Verify: p2 hand reduced by 1');
     const p2 = r1.newState.players.find(p => p.id === 'p2')!;
     expect(p2.hand.length).toBe(1);
+
+    log('Verify: pendingEffect set for queen-reveal');
+    expect(r1.newState.pendingEffect).toEqual({ type: 'queen-reveal', targetPlayerId: 'p3' });
   });
 });

@@ -18,6 +18,7 @@ const INITIAL_GAME: PlayerView = {
     { suit: 'spades', value: 10 },
     { suit: 'spades', value: 2 },
   ],
+  myRevealedCards: [],
   opponents: [
     { id: 'opp1', name: 'Alice', cardCount: 4, revealedCards: [], hasAnnouncedOneCard: false },
     { id: 'opp2', name: 'Bob', cardCount: 2, revealedCards: [{ suit: 'hearts', value: 'king' }], hasAnnouncedOneCard: false },

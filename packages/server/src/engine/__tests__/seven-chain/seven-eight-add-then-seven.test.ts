@@ -32,15 +32,56 @@ describe('Seven — 7 + 8 add + 7', () => {
     log('Verify: penalty=5');
     expect((r2.newState.pendingEffect as any)?.penalty).toBe(5);
 
-    log('p4 draws 5 cards (accepts penalty)');
+    log('p4 draws 1st card (transitions to seven-penalty)');
     const r3 = applyAction(r2.newState, 'p4', { type: 'DRAW_CARD' });
     expect(r3.ok).toBe(true);
     if (!r3.ok) return;
+    expect(r3.newState.players.find(p => p.id === 'p4')!.hand.length).toBe(3);
+    expect(r3.newState.pendingEffect).toEqual({
+      type: 'seven-penalty',
+      penalty: 5,
+      drawn: 1,
+      suit: 'hearts',
+    });
 
-    log('Verify: p4 has 7 cards (2 original + 5 drawn), pending effect cleared');
-    const p4 = r3.newState.players.find(p => p.id === 'p4')!;
-    expect(p4.hand.length).toBe(7); // 2 + 5 drawn
-    expect(r3.newState.pendingEffect).toBeNull();
+    log('p4 draws 2nd card');
+    const r4 = applyAction(r3.newState, 'p4', { type: 'DRAW_CARD' });
+    expect(r4.ok).toBe(true);
+    if (!r4.ok) return;
+    expect(r4.newState.players.find(p => p.id === 'p4')!.hand.length).toBe(4);
+    expect((r4.newState.pendingEffect as any)?.drawn).toBe(2);
+
+    log('p4 draws 3rd card');
+    const r5 = applyAction(r4.newState, 'p4', { type: 'DRAW_CARD' });
+    expect(r5.ok).toBe(true);
+    if (!r5.ok) return;
+    expect(r5.newState.players.find(p => p.id === 'p4')!.hand.length).toBe(5);
+    expect((r5.newState.pendingEffect as any)?.drawn).toBe(3);
+
+    log('p4 draws 4th card');
+    const r6 = applyAction(r5.newState, 'p4', { type: 'DRAW_CARD' });
+    expect(r6.ok).toBe(true);
+    if (!r6.ok) return;
+    expect(r6.newState.players.find(p => p.id === 'p4')!.hand.length).toBe(6);
+    expect((r6.newState.pendingEffect as any)?.drawn).toBe(4);
+
+    log('p4 draws 5th card');
+    const r7 = applyAction(r6.newState, 'p4', { type: 'DRAW_CARD' });
+    expect(r7.ok).toBe(true);
+    if (!r7.ok) return;
+    expect(r7.newState.players.find(p => p.id === 'p4')!.hand.length).toBe(7);
+    expect(r7.newState.pendingEffect).toEqual({
+      type: 'seven-penalty',
+      penalty: 5,
+      drawn: 5,
+      suit: 'hearts',
+    });
+
+    log('p4 passes to clear penalty');
+    const r8 = applyAction(r7.newState, 'p4', { type: 'PASS_TURN' });
+    expect(r8.ok).toBe(true);
+    if (!r8.ok) return;
+    expect(r8.newState.pendingEffect).toBeNull();
   });
 
   it('should allow 7 after 8-add to continue chain', () => {

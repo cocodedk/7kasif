@@ -32,13 +32,26 @@ export interface PendingAce {
   acesPlayed: number; // count of Aces in this chain
 }
 
-export type PendingEffect = PendingChain | PendingAce;
+export interface PendingPenalty {
+  type: 'seven-penalty';
+  penalty: number; // minimum cards to draw (e.g. 2)
+  drawn: number; // cards drawn so far
+  suit: Suit; // preserved from the chain
+}
+
+export interface PendingQueenReveal {
+  type: 'queen-reveal';
+  targetPlayerId: string; // the player who must reveal a card
+}
+
+export type PendingEffect = PendingChain | PendingAce | PendingPenalty | PendingQueenReveal;
 
 export interface Player {
   id: string;
   name: string;
   hand: Card[];
   revealedCards: Card[]; // cards revealed by Queen, visible to all
+  lockedCards: Card[]; // cards that can't be played this turn (just revealed)
   hasAnnouncedOneCard: boolean;
 }
 
@@ -88,12 +101,18 @@ export interface ChallengeNoAnnouncementAction {
   targetPlayerId: string;
 }
 
+export interface RevealCardAction {
+  type: 'REVEAL_CARD';
+  card: Card;
+}
+
 export type Action =
   | PlayCardAction
   | DrawCardAction
   | PassTurnAction
   | AnnounceOneCardAction
-  | ChallengeNoAnnouncementAction;
+  | ChallengeNoAnnouncementAction
+  | RevealCardAction;
 
 // ─── Game Events ───
 
@@ -300,6 +319,7 @@ export interface RoomJoinedMessage {
 export interface GameStateMessage {
   type: 'GAME_STATE';
   state: PlayerView;
+  events?: GameEvent[]; // events from the action that produced this state
 }
 
 export interface MoveRejectedMessage {
@@ -347,6 +367,7 @@ export interface OpponentView {
 export interface PlayerView {
   phase: GamePhase;
   myHand: Card[];
+  myRevealedCards: Card[]; // my cards revealed by Queen (visible to all)
   opponents: OpponentView[];
   currentPlayerId: string;
   direction: Direction;

@@ -21,6 +21,9 @@ describe('Queen — four players turn advance', () => {
 
     log('Verify: turn goes to p3 (next player)');
     expect(r1.newState.players[r1.newState.currentPlayerIndex].id).toBe('p3');
+
+    log('Verify: pendingEffect set for p3');
+    expect(r1.newState.pendingEffect).toEqual({ type: 'queen-reveal', targetPlayerId: 'p3' });
   });
 
   it('should wrap around from last player to first', () => {
@@ -42,5 +45,8 @@ describe('Queen — four players turn advance', () => {
 
     log('Verify: turn goes to p1');
     expect(r1.newState.players[r1.newState.currentPlayerIndex].id).toBe('p1');
+
+    log('Verify: pendingEffect targets p1');
+    expect(r1.newState.pendingEffect).toEqual({ type: 'queen-reveal', targetPlayerId: 'p1' });
   });
 });
