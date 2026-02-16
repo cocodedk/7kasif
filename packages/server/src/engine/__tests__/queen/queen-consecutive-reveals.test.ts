@@ -1,9 +1,13 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { applyAction } from '../../game.js';
 import { createTestState, c, log } from '../helpers.js';
 
 describe('Queen — consecutive reveals do not duplicate', () => {
   it('should reveal different cards when two queens target the same player', () => {
+    // Mock Math.random so the queen reveal picks the last unrevealed card
+    // (index 2 = Ks from p2's hand, index 1 = 8s from p3's hand),
+    // ensuring Q♦ is never the revealed card (which would block p2 from playing it).
+    vi.spyOn(Math, 'random').mockReturnValue(0.99);
     const state = createTestState({
       hands: [
         [c('Qh'), c('5s')],              // p1
@@ -37,5 +41,7 @@ describe('Queen — consecutive reveals do not duplicate', () => {
     log('Verify: p1 has no revealed cards (was not targeted)');
     const p1After = r2.newState.players.find(p => p.id === 'p1')!;
     expect(p1After.revealedCards.length).toBe(0);
+
+    vi.restoreAllMocks();
   });
 });
