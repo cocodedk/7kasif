@@ -197,6 +197,9 @@ async function ensureSchema() {
       action_data JSONB,
       created_at TIMESTAMPTZ DEFAULT NOW()
     )`,
+    // Migrations: add columns that may be missing from older table versions
+    `ALTER TABLE session_players ADD COLUMN IF NOT EXISTS user_id INT REFERENCES users(id)`,
+    `ALTER TABLE session_players ADD COLUMN IF NOT EXISTS score_rows JSONB DEFAULT '[]'`,
     `CREATE INDEX IF NOT EXISTS idx_sessions_room_code ON sessions(room_code)`,
     `CREATE INDEX IF NOT EXISTS idx_session_players_session_id ON session_players(session_id)`,
     `CREATE INDEX IF NOT EXISTS idx_session_players_user_id ON session_players(user_id)`,
