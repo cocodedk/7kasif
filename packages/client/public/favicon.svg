@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- tail fin -->
+  <polygon points="2,32 14,18 14,46" fill="#16a34a"/>
+  <polygon points="5,32 14,22 14,42" fill="#22c55e"/>
+  <!-- body -->
+  <ellipse cx="34" cy="32" rx="22" ry="15" fill="#22c55e"/>
+  <!-- dorsal fin -->
+  <polygon points="24,17 34,10 38,17" fill="#16a34a"/>
+  <!-- belly fin -->
+  <polygon points="28,47 34,52 38,47" fill="#16a34a"/>
+  <!-- eye white -->
+  <circle cx="44" cy="26" r="5.5" fill="#fff"/>
+  <!-- pupil -->
+  <circle cx="46" cy="25.5" r="3" fill="#1a1a2e"/>
+  <!-- eye glint -->
+  <circle cx="47.5" cy="24" r="1" fill="#fff"/>
+  <!-- teeth top -->
+  <polygon points="54,29 56.5,32 53,32" fill="#fff"/>
+  <polygon points="51,30 53.5,33 50,33" fill="#fff"/>
+  <!-- teeth bottom -->
+  <polygon points="54,35 56.5,32 53,32" fill="#fff"/>
+  <polygon points="51,34 53.5,31 50,31" fill="#fff"/>
+  <!-- mouth line -->
+  <line x1="49" y1="32" x2="57" y2="32" stroke="#16a34a" stroke-width="0.8"/>
+</svg>

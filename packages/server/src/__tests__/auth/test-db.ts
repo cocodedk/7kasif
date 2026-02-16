@@ -26,6 +26,8 @@ export function getTestPool(): pg.Pool {
 export async function initTestDb(): Promise<void> {
   const pool = getTestPool();
   await pool.query(`
+    DROP TABLE IF EXISTS round_actions, rounds, session_players, sessions, magic_tokens, users CASCADE;
+
     CREATE TABLE IF NOT EXISTS users (
       id SERIAL PRIMARY KEY,
       email VARCHAR(255) NOT NULL UNIQUE,
