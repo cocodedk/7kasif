@@ -7,7 +7,8 @@ services:
       - NODE_ENV=production
       - PORT=3000
       - CLIENT_DIR=/app/packages/client/dist
-      - DATABASE_URL=postgresql://hk:${DB_PASSWORD}@postgres:5432/hafte_kasif
+      - DB_PASSWORD_FILE=/run/secrets/db_password
+      - DATABASE_URL=postgresql://hk@postgres:5432/hafte_kasif
       - JWT_SECRET=${JWT_SECRET}
       - CORS_ORIGIN=https://cocodedk.github.io
       - SMTP_HOST=${SMTP_HOST}
@@ -18,6 +19,8 @@ services:
       - APP_URL=${APP_URL:-https://7kasif.dk}
       - ADMIN_EMAIL=${ADMIN_EMAIL}
       - ADMIN_NAME=${ADMIN_NAME:-Admin}
+    secrets:
+      - db_password
     depends_on:
       postgres:
         condition: service_healthy
