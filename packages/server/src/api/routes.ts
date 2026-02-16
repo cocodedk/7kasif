@@ -117,7 +117,8 @@ export async function handleApiRoute(
       const leaderboard = await getLeaderboard();
       json(res, 200, leaderboard);
     } catch (err: any) {
-      json(res, 500, { error: 'Failed to fetch leaderboard' });
+      console.error('Leaderboard error:', err);
+      json(res, 500, { error: 'Failed to fetch leaderboard', detail: err.message });
     }
     return true;
   }
