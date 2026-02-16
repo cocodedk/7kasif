@@ -25,7 +25,7 @@ docker image prune -f
 
 # Health check
 echo "Waiting for app to start..."
-sleep 3
+sleep 10
 
 if curl -sf http://localhost:3000 > /dev/null; then
   echo "Deployed successfully! App is healthy."

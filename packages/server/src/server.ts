@@ -144,11 +144,11 @@ async function seedAdmin() {
   const name = process.env.ADMIN_NAME || 'Admin';
   if (!email) return;
 
-  const pool = getPool();
-  const existing = await pool.query('SELECT id FROM users WHERE role = $1 LIMIT 1', ['admin']);
-  if (existing.rows.length > 0) return;
-
   try {
+    const pool = getPool();
+    const existing = await pool.query('SELECT id FROM users WHERE role = $1 LIMIT 1', ['admin']);
+    if (existing.rows.length > 0) return;
+
     const user = await createUser(email, name, 'admin');
     console.log(`Admin seeded: ${user.email} (id: ${user.id})`);
   } catch (err: any) {

@@ -19,7 +19,8 @@ services:
       - ADMIN_EMAIL=${ADMIN_EMAIL}
       - ADMIN_NAME=${ADMIN_NAME:-Admin}
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
 
   postgres:
@@ -28,6 +29,11 @@ services:
       POSTGRES_DB: hafte_kasif
       POSTGRES_USER: hk
       POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hk -d hafte_kasif"]
+      interval: 3s
+      timeout: 3s
+      retries: 5
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./deploy/init.sql:/docker-entrypoint-initdb.d/init.sql
