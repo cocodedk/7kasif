@@ -189,6 +189,7 @@ export class MessageHandler {
           loserId: gameOverEvent.loserId,
           points: gameOverEvent.points,
           reversed: gameOverEvent.reversed,
+          hands: gameOverEvent.hands,
         } satisfies ServerMessage);
       }
 

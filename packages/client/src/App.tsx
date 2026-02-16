@@ -113,6 +113,7 @@ function AuthenticatedGame({
         loserId={state.gameOver.loserId}
         points={state.gameOver.points}
         reversed={state.gameOver.reversed}
+        hands={state.gameOver.hands}
         playerId={playerId}
         isHost={isHost}
         tournament={state.tournament}

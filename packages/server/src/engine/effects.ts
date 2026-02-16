@@ -151,12 +151,22 @@ function calculateGameEnd(state: GameState, winnerId: string, finishingCard: Car
   state.losers = reversed ? [winnerId] : loserIds;
   state.finishingCard = finishingCard;
 
+  // Build hand summaries for all non-winner players
+  const hands = otherPlayers.map(p => ({
+    playerId: p.id,
+    playerName: p.name,
+    handValue: handValue(p.hand),
+    sevens: p.hand.filter(c => c.value === 7).length,
+    cardCount: p.hand.length,
+  }));
+
   events.push({
     type: 'GAME_OVER',
     winnerId,
     loserId: reversed ? winnerId : loserIds[0],
     points,
     reversed,
+    hands,
   });
 
   return events;

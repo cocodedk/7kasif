@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { ClientMessage, TournamentView } from '@hafte-kasif/shared';
+import type { ClientMessage, TournamentView, PlayerHandSummary } from '@hafte-kasif/shared';
 import { Scoreboard } from '../components/Scoreboard.js';
 
 interface GameOverScreenProps {
@@ -7,6 +7,7 @@ interface GameOverScreenProps {
   loserId: string;
   points: number;
   reversed: boolean;
+  hands: PlayerHandSummary[];
   playerId: string;
   isHost: boolean;
   tournament: TournamentView | null;
@@ -15,7 +16,7 @@ interface GameOverScreenProps {
 }
 
 export function GameOverScreen({
-  winnerId, loserId, points, reversed, playerId, isHost, tournament, send, onReset,
+  winnerId, loserId, points, reversed, hands, playerId, isHost, tournament, send, onReset,
 }: GameOverScreenProps) {
   const [cardsPerPlayer, setCardsPerPlayer] = useState(7);
 
@@ -53,6 +54,34 @@ export function GameOverScreen({
           </span>
         </div>
       </div>
+
+      {/* Hand Breakdown */}
+      {hands.length > 0 && (
+        <div className="flex-none px-4 pb-4">
+          <div className="bg-white/5 rounded-lg p-3 space-y-2">
+            <h3 className="text-sm font-semibold text-gray-400 mb-2">Hand Breakdown</h3>
+            {hands.map(h => {
+              const isThisLoser = h.playerId === loserId;
+              return (
+                <div
+                  key={h.playerId}
+                  className={`flex items-center justify-between text-sm px-2 py-1 rounded ${
+                    isThisLoser ? 'bg-red-500/10 text-red-300' : 'text-gray-300'
+                  }`}
+                >
+                  <span>{h.playerName} ({h.cardCount} cards)</span>
+                  <span className="flex items-center gap-3">
+                    {h.sevens > 0 && (
+                      <span className="text-yellow-400">7s: {h.sevens}</span>
+                    )}
+                    <span>value: {h.handValue}</span>
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Scoreboard */}
       {tournament && (

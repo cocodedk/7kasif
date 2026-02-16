@@ -179,12 +179,21 @@ export interface AnnouncementChallengedEvent {
   penalty: boolean; // true if penalty applied
 }
 
+export interface PlayerHandSummary {
+  playerId: string;
+  playerName: string;
+  handValue: number;
+  sevens: number;
+  cardCount: number;
+}
+
 export interface GameOverEvent {
   type: 'GAME_OVER';
   winnerId: string;
   loserId: string;
   points: number;
   reversed: boolean;
+  hands: PlayerHandSummary[]; // all non-winner players' hand info
 }
 
 export type GameEvent =
@@ -333,6 +342,7 @@ export interface GameOverMessage {
   loserId: string;
   points: number;
   reversed: boolean;
+  hands: PlayerHandSummary[];
 }
 
 export interface TournamentUpdateMessage {
