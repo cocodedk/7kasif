@@ -132,38 +132,83 @@ describe('WebSocket auth integration', () => {
     ws.close();
   });
 
-  it('should assign anonymous player ID without token', async () => {
+  it('should reject CREATE_ROOM without token', async () => {
     const { ws, messages } = await createClient(port);
 
-    sendMsg(ws, { type: 'CREATE_ROOM', playerName: 'Guest', mode: 'standard' });
-    const msg = await waitForMessage(messages, 'ROOM_CREATED');
+    sendMsg(ws, { type: 'CREATE_ROOM', playerName: 'Guest', mode: 'standard' } as any);
+    const msg = await waitForMessage(messages, 'MOVE_REJECTED');
 
-    expect(msg.type).toBe('ROOM_CREATED');
-    if (msg.type === 'ROOM_CREATED') {
-      expect(msg.playerId).toMatch(/^player_/);
+    expect(msg.type).toBe('MOVE_REJECTED');
+    if (msg.type === 'MOVE_REJECTED') {
+      expect(msg.reason).toBe('Authentication required');
     }
 
     ws.close();
   });
 
-  it('should assign anonymous player ID with invalid token', async () => {
+  it('should reject CREATE_ROOM with invalid token', async () => {
     const { ws, messages } = await createClient(port);
 
     sendMsg(ws, { type: 'CREATE_ROOM', playerName: 'Guest', mode: 'standard', token: 'invalid.token' });
-    const msg = await waitForMessage(messages, 'ROOM_CREATED');
+    const msg = await waitForMessage(messages, 'MOVE_REJECTED');
 
-    expect(msg.type).toBe('ROOM_CREATED');
-    if (msg.type === 'ROOM_CREATED') {
-      expect(msg.playerId).toMatch(/^player_/);
+    expect(msg.type).toBe('MOVE_REJECTED');
+    if (msg.type === 'MOVE_REJECTED') {
+      expect(msg.reason).toBe('Authentication required');
     }
 
     ws.close();
   });
 
-  it('should allow authenticated user to join a room', async () => {
-    // Host creates room
+  it('should reject JOIN_ROOM without token', async () => {
+    // Host creates room (authenticated)
+    const { jwt: hostJwt } = await getJwtForUser('host@test.com', 'Host');
     const { ws: hostWs, messages: hostMsgs } = await createClient(port);
-    sendMsg(hostWs, { type: 'CREATE_ROOM', playerName: 'Host', mode: 'standard' });
+    sendMsg(hostWs, { type: 'CREATE_ROOM', playerName: 'Host', mode: 'standard', token: hostJwt });
+    const created = await waitForMessage(hostMsgs, 'ROOM_CREATED');
+    if (created.type !== 'ROOM_CREATED') throw new Error('unexpected');
+
+    // Unauthenticated user tries to join
+    const { ws: joinWs, messages: joinMsgs } = await createClient(port);
+    sendMsg(joinWs, { type: 'JOIN_ROOM', roomCode: created.roomCode, playerName: 'Guest' } as any);
+    const msg = await waitForMessage(joinMsgs, 'MOVE_REJECTED');
+
+    expect(msg.type).toBe('MOVE_REJECTED');
+    if (msg.type === 'MOVE_REJECTED') {
+      expect(msg.reason).toBe('Authentication required');
+    }
+
+    hostWs.close();
+    joinWs.close();
+  });
+
+  it('should reject JOIN_ROOM with invalid token', async () => {
+    // Host creates room (authenticated)
+    const { jwt: hostJwt } = await getJwtForUser('host2@test.com', 'Host');
+    const { ws: hostWs, messages: hostMsgs } = await createClient(port);
+    sendMsg(hostWs, { type: 'CREATE_ROOM', playerName: 'Host', mode: 'standard', token: hostJwt });
+    const created = await waitForMessage(hostMsgs, 'ROOM_CREATED');
+    if (created.type !== 'ROOM_CREATED') throw new Error('unexpected');
+
+    // User with invalid token tries to join
+    const { ws: joinWs, messages: joinMsgs } = await createClient(port);
+    sendMsg(joinWs, { type: 'JOIN_ROOM', roomCode: created.roomCode, playerName: 'Fake', token: 'invalid.token' });
+    const msg = await waitForMessage(joinMsgs, 'MOVE_REJECTED');
+
+    expect(msg.type).toBe('MOVE_REJECTED');
+    if (msg.type === 'MOVE_REJECTED') {
+      expect(msg.reason).toBe('Authentication required');
+    }
+
+    hostWs.close();
+    joinWs.close();
+  });
+
+  it('should allow authenticated user to join a room', async () => {
+    // Host creates room (authenticated)
+    const { jwt: hostJwt } = await getJwtForUser('alice@test.com', 'Alice');
+    const { ws: hostWs, messages: hostMsgs } = await createClient(port);
+    sendMsg(hostWs, { type: 'CREATE_ROOM', playerName: 'Alice', mode: 'standard', token: hostJwt });
     const created = await waitForMessage(hostMsgs, 'ROOM_CREATED');
     if (created.type !== 'ROOM_CREATED') throw new Error('unexpected');
 

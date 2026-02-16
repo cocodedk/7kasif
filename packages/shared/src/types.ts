@@ -248,14 +248,14 @@ export interface CreateRoomMessage {
   type: 'CREATE_ROOM';
   playerName: string;
   mode: GameMode;
-  token?: string;
+  token: string;
 }
 
 export interface JoinRoomMessage {
   type: 'JOIN_ROOM';
   roomCode: string;
   playerName: string;
-  token?: string;
+  token: string;
 }
 
 export interface StartGameMessage {

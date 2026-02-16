@@ -2,11 +2,10 @@ import { useState } from 'react';
 
 interface LoginScreenProps {
   onRequestLink: (email: string) => Promise<void>;
-  onSkip: () => void;
   error?: string;
 }
 
-export function LoginScreen({ onRequestLink, onSkip, error: externalError }: LoginScreenProps) {
+export function LoginScreen({ onRequestLink, error: externalError }: LoginScreenProps) {
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
   const [error, setError] = useState(externalError || '');
@@ -54,14 +53,6 @@ export function LoginScreen({ onRequestLink, onSkip, error: externalError }: Log
           >
             Send again
           </button>
-
-          <button
-            type="button"
-            onClick={onSkip}
-            className="w-full text-gray-400 py-2 text-sm"
-          >
-            Play as Guest
-          </button>
         </div>
       </div>
     );
@@ -94,14 +85,6 @@ export function LoginScreen({ onRequestLink, onSkip, error: externalError }: Log
           className="w-full font-bold py-3 rounded-lg transition-colors disabled:bg-gray-700 text-white bg-green-600 active:bg-green-700"
         >
           {loading ? '...' : 'Send Login Link'}
-        </button>
-
-        <button
-          type="button"
-          onClick={onSkip}
-          className="w-full text-gray-400 py-2 text-sm"
-        >
-          Play as Guest
         </button>
       </form>
     </div>

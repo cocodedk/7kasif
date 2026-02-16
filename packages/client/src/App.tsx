@@ -19,7 +19,6 @@ export function App() {
 
 function GameApp() {
   const { user, token, isAuthenticated, requestMagicLink, verifyMagicToken, logout } = useAuth();
-  const [guestMode, setGuestMode] = useState(false);
   const [verifyError, setVerifyError] = useState('');
   const [verifying, setVerifying] = useState(false);
 
@@ -53,12 +52,10 @@ function GameApp() {
     );
   }
 
-  // Show login screen if not authenticated and not in guest mode
-  if (!isAuthenticated && !guestMode) {
+  if (!isAuthenticated) {
     return (
       <LoginScreen
         onRequestLink={requestMagicLink}
-        onSkip={() => setGuestMode(true)}
         error={verifyError}
       />
     );
@@ -68,8 +65,7 @@ function GameApp() {
     <AuthenticatedGame
       token={token}
       displayName={user?.displayName}
-      isAuthenticated={isAuthenticated}
-      onLogout={() => { logout(); setGuestMode(false); }}
+      onLogout={logout}
     />
   );
 }
@@ -77,12 +73,10 @@ function GameApp() {
 function AuthenticatedGame({
   token,
   displayName,
-  isAuthenticated,
   onLogout,
 }: {
   token: string | null;
   displayName?: string;
-  isAuthenticated: boolean;
   onLogout: () => void;
 }) {
   const { send: rawSend, connected, onMessage } = useWebSocket();
@@ -155,17 +149,15 @@ function AuthenticatedGame({
   // Home
   return (
     <div className="relative h-full">
-      {isAuthenticated && (
-        <div className="absolute top-4 right-4 flex items-center gap-3">
-          <span className="text-sm text-gray-300">{displayName}</span>
-          <button
-            onClick={onLogout}
-            className="text-xs text-gray-500 hover:text-gray-300"
-          >
-            Logout
-          </button>
-        </div>
-      )}
+      <div className="absolute top-4 right-4 flex items-center gap-3">
+        <span className="text-sm text-gray-300">{displayName}</span>
+        <button
+          onClick={onLogout}
+          className="text-xs text-gray-500 hover:text-gray-300"
+        >
+          Logout
+        </button>
+      </div>
       <HomeScreen send={send} connected={connected} />
     </div>
   );

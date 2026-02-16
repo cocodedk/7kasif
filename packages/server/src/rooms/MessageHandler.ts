@@ -45,23 +45,25 @@ export class MessageHandler {
     }
   }
 
-  private resolvePlayerId(token?: string): { playerId: string; userId: number | null } {
+  private resolvePlayerId(token?: string): { playerId: string; userId: number } | null {
     if (token) {
       try {
         const decoded = verifyToken(token);
         return { playerId: `user_${decoded.userId}`, userId: decoded.userId };
       } catch {
-        // Invalid token — fall through to anonymous
+        // Invalid token
       }
     }
-    return {
-      playerId: `player_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-      userId: null,
-    };
+    return null;
   }
 
   private handleCreateRoom(ws: WebSocket, playerName: string, mode: any, token?: string): void {
-    const { playerId } = this.resolvePlayerId(token);
+    const resolved = this.resolvePlayerId(token);
+    if (!resolved) {
+      this.sendTo(ws, { type: 'MOVE_REJECTED', reason: 'Authentication required' });
+      return;
+    }
+    const { playerId } = resolved;
     this.connections.add(ws, playerId, playerName);
 
     const room = this.rooms.createRoom(playerId, playerName, mode);
@@ -75,7 +77,12 @@ export class MessageHandler {
   }
 
   private handleJoinRoom(ws: WebSocket, roomCode: string, playerName: string, token?: string): void {
-    const { playerId } = this.resolvePlayerId(token);
+    const resolved = this.resolvePlayerId(token);
+    if (!resolved) {
+      this.sendTo(ws, { type: 'MOVE_REJECTED', reason: 'Authentication required' });
+      return;
+    }
+    const { playerId } = resolved;
     this.connections.add(ws, playerId, playerName);
 
     const room = this.rooms.joinRoom(roomCode, playerId, playerName);
