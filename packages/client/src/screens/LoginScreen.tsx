@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { SeaCreatures } from '../components/SeaCreatures.js';
 
 interface LoginScreenProps {
   onRequestLink: (email: string) => Promise<void>;
@@ -33,11 +34,12 @@ export function LoginScreen({ onRequestLink, error: externalError }: LoginScreen
 
   if (sent) {
     return (
-      <div className="h-full flex flex-col items-center justify-center px-6">
-        <h1 className="text-3xl font-bold mb-1">Hafte Kasif</h1>
-        <p className="text-gray-400 text-sm mb-8">The Dirty Seven</p>
+      <div className="relative h-full flex flex-col items-center justify-center px-6">
+        <SeaCreatures />
+        <h1 className="text-3xl font-bold mb-1 relative z-10">Hafte Kasif</h1>
+        <p className="text-gray-400 text-sm mb-8 relative z-10">The Dirty Seven</p>
 
-        <div className="w-full max-w-xs space-y-4 text-center">
+        <div className="w-full max-w-xs space-y-4 text-center relative z-10">
           <div className="bg-green-900/50 text-green-300 text-sm px-4 py-3 rounded-lg">
             Check your email for a login link.
           </div>
@@ -59,11 +61,12 @@ export function LoginScreen({ onRequestLink, error: externalError }: LoginScreen
   }
 
   return (
-    <div className="h-full flex flex-col items-center justify-center px-6">
-      <h1 className="text-3xl font-bold mb-1">Hafte Kasif</h1>
-      <p className="text-gray-400 text-sm mb-8">The Dirty Seven</p>
+    <div className="relative h-full flex flex-col items-center justify-center px-6">
+      <SeaCreatures />
+      <h1 className="text-3xl font-bold mb-1 relative z-10">Hafte Kasif</h1>
+      <p className="text-gray-400 text-sm mb-8 relative z-10">The Dirty Seven</p>
 
-      <form onSubmit={handleSubmit} className="w-full max-w-xs space-y-4">
+      <form onSubmit={handleSubmit} className="w-full max-w-xs space-y-4 relative z-10">
         <input
           type="email"
           value={email}
