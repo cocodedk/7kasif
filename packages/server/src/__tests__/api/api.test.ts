@@ -68,7 +68,9 @@ beforeEach(async () => {
 });
 
 afterAll(async () => {
-  server?.close();
+  await new Promise<void>((resolve) => {
+    server ? server.close(() => resolve()) : resolve();
+  });
   await closeTestDb();
 });
 
@@ -201,7 +203,7 @@ describe('POST /api/admin/create-user', () => {
   });
 
   it('should return 400 for duplicate email', async () => {
-    await fetchApi('/api/admin/create-user', {
+    const first = await fetchApi('/api/admin/create-user', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -209,6 +211,7 @@ describe('POST /api/admin/create-user', () => {
       },
       body: JSON.stringify({ email: 'alice@test.com', displayName: 'Alice' }),
     });
+    expect(first.status).toBe(201);
 
     const res = await fetchApi('/api/admin/create-user', {
       method: 'POST',
@@ -284,7 +287,6 @@ describe('GET /api/players/:id/stats', () => {
     const res = await fetchApi(`/api/players/${userId}/stats`);
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.email).toBe('bob@test.com');
     expect(body.displayName).toBe('Bob');
   });
 

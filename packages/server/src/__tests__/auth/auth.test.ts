@@ -133,7 +133,7 @@ describe('verifyMagicToken', () => {
     const magicToken = tokenResult.rows[0].token;
 
     await verifyMagicToken(magicToken);
-    await expect(verifyMagicToken(magicToken)).rejects.toThrow('Token has already been used');
+    await expect(verifyMagicToken(magicToken)).rejects.toThrow('Invalid, expired, or already-used token');
   });
 
   it('should reject an expired token', async () => {
@@ -147,11 +147,11 @@ describe('verifyMagicToken', () => {
     const tokenResult = await pool.query('SELECT token FROM magic_tokens');
     const magicToken = tokenResult.rows[0].token;
 
-    await expect(verifyMagicToken(magicToken)).rejects.toThrow('Token has expired');
+    await expect(verifyMagicToken(magicToken)).rejects.toThrow('Invalid, expired, or already-used token');
   });
 
   it('should reject an invalid token', async () => {
-    await expect(verifyMagicToken('nonexistent-token')).rejects.toThrow('Invalid or expired token');
+    await expect(verifyMagicToken('nonexistent-token')).rejects.toThrow('Invalid, expired, or already-used token');
   });
 
   it('should reject empty token', async () => {

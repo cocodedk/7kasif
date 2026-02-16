@@ -11,7 +11,7 @@ services:
     environment:
       - NODE_ENV=development
       - PORT=3000
-      - DATABASE_URL=postgresql://hk:POSTGRES_HOST_AUTH_METHOD%3Dtrust@postgres:5432/hafte_kasif
+      - DATABASE_URL=postgresql://hk:devpass@postgres:5432/hafte_kasif
       - JWT_SECRET=dev-jwt-secret-change-in-production
       - CORS_ORIGIN=http://localhost:5173
       - VITE_DEV_URL=http://client:5173
@@ -42,6 +42,8 @@ services:
 
   postgres:
     image: postgres:16-alpine
+    ports:
+      - "127.0.0.1:5432:5432"
     environment:
       POSTGRES_DB: hafte_kasif
       POSTGRES_USER: hk

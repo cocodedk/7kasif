@@ -19,7 +19,7 @@ async function main() {
     console.log(`Admin user created: ${user.email} (id: ${user.id}, role: ${user.role})`);
   } catch (err: any) {
     console.error(`Failed to create admin: ${err.message}`);
-    process.exit(1);
+    process.exitCode = 1;
   } finally {
     await closePool();
   }

@@ -60,8 +60,13 @@ export function useAuth() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ token }),
     });
+    if (!res.ok) {
+      const text = await res.text();
+      let message = `Verification failed (${res.status})`;
+      try { message = JSON.parse(text).error || message; } catch {}
+      throw new Error(message);
+    }
     const body = await res.json();
-    if (!res.ok) throw new Error(body.error || 'Verification failed');
     setAuth(body.user, body.token);
     return body;
   }, [setAuth]);

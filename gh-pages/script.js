@@ -33,7 +33,7 @@ async function loadLeaderboard() {
       if (entry.netScore > 0) netClass = 'net-positive';
       else if (entry.netScore < 0) netClass = 'net-negative';
 
-      var name = entry.displayName || entry.playerName;
+      var name = entry.displayName || entry.playerName || 'Unknown';
 
       row.innerHTML =
         '<td class="' + rankClass + '">' + rank + '</td>' +

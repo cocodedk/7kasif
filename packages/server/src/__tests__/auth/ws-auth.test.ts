@@ -50,7 +50,7 @@ function createTestServer(): Promise<number> {
 
     httpServer.listen(0, () => {
       const addr = httpServer.address();
-      resolve(typeof addr === 'object' ? addr!.port : 0);
+      resolve(addr && typeof addr === 'object' ? addr.port : 0);
     });
   });
 }
@@ -164,7 +164,8 @@ describe('WebSocket auth integration', () => {
     // Host creates room
     const { ws: hostWs, messages: hostMsgs } = await createClient(port);
     sendMsg(hostWs, { type: 'CREATE_ROOM', playerName: 'Host', mode: 'standard' });
-    const created = await waitForMessage(hostMsgs, 'ROOM_CREATED') as any;
+    const created = await waitForMessage(hostMsgs, 'ROOM_CREATED');
+    if (created.type !== 'ROOM_CREATED') throw new Error('unexpected');
 
     // Authenticated user joins
     const { jwt } = await getJwtForUser('bob@test.com', 'Bob');

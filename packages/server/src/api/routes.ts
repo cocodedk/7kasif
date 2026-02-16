@@ -16,10 +16,20 @@ function json(res: ServerResponse, statusCode: number, data: unknown): void {
   res.end(JSON.stringify(data));
 }
 
+const MAX_BODY_BYTES = 1_048_576;
+
 function readBody(req: IncomingMessage): Promise<string> {
   return new Promise((resolve, reject) => {
     let body = '';
-    req.on('data', (chunk) => (body += chunk));
+    let bytes = 0;
+    req.on('data', (chunk) => {
+      bytes += chunk.length;
+      if (bytes > MAX_BODY_BYTES) {
+        req.destroy(new Error('Request body too large'));
+        return;
+      }
+      body += chunk;
+    });
     req.on('end', () => resolve(body));
     req.on('error', reject);
   });

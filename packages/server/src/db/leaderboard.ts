@@ -25,7 +25,6 @@ export interface TournamentSummary {
 
 export interface PlayerStats {
   userId: number;
-  email: string;
   displayName: string;
   totalSessions: number;
   totalRoundsWon: number;
@@ -47,19 +46,19 @@ export async function getLeaderboard(): Promise<LeaderboardEntry[]> {
       COALESCE(SUM(sp.final_plus_clusters), 0) AS total_plus_clusters,
       COALESCE(SUM(sp.final_minus_clusters), 0) AS total_minus_clusters,
       COALESCE(SUM(sp.final_net_score), 0) AS net_score,
-      COALESCE(wins.cnt, 0) AS total_rounds_won,
-      COALESCE(losses.cnt, 0) AS total_rounds_lost
+      COALESCE((
+        SELECT COUNT(*) FROM rounds r
+        JOIN session_players sp2 ON sp2.session_id = r.session_id AND sp2.player_name = r.winner_name
+        WHERE sp2.user_id = sp.user_id AND sp2.player_name = sp.player_name AND NOT r.reversed
+      ), 0) AS total_rounds_won,
+      COALESCE((
+        SELECT COUNT(*) FROM rounds r
+        JOIN session_players sp2 ON sp2.session_id = r.session_id AND sp2.player_name = r.loser_name
+        WHERE sp2.user_id = sp.user_id AND sp2.player_name = sp.player_name AND NOT r.reversed
+      ), 0) AS total_rounds_lost
     FROM session_players sp
     LEFT JOIN users u ON u.id = sp.user_id
-    LEFT JOIN LATERAL (
-      SELECT COUNT(*) AS cnt FROM rounds r
-      WHERE r.session_id = sp.session_id AND r.winner_name = sp.player_name AND NOT r.reversed
-    ) wins ON true
-    LEFT JOIN LATERAL (
-      SELECT COUNT(*) AS cnt FROM rounds r
-      WHERE r.session_id = sp.session_id AND r.loser_name = sp.player_name AND NOT r.reversed
-    ) losses ON true
-    GROUP BY sp.user_id, sp.player_name, u.display_name, wins.cnt, losses.cnt
+    GROUP BY sp.user_id, sp.player_name, u.display_name
     ORDER BY net_score DESC, total_plus_clusters DESC
   `);
 
@@ -110,7 +109,7 @@ export async function getPlayerStats(userId: number): Promise<PlayerStats | null
   const pool = getPool();
 
   const userResult = await pool.query(
-    'SELECT id, email, display_name FROM users WHERE id = $1',
+    'SELECT id, display_name FROM users WHERE id = $1',
     [userId],
   );
   if (userResult.rows.length === 0) return null;
@@ -154,7 +153,6 @@ export async function getPlayerStats(userId: number): Promise<PlayerStats | null
 
   return {
     userId: user.id,
-    email: user.email,
     displayName: user.display_name,
     totalSessions: parseInt(stats.total_sessions, 10),
     totalRoundsWon: parseInt(winsResult.rows[0].cnt, 10),

@@ -60,8 +60,6 @@ CREATE TABLE IF NOT EXISTS round_actions (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
-CREATE INDEX IF NOT EXISTS idx_magic_tokens_token ON magic_tokens(token);
 CREATE INDEX IF NOT EXISTS idx_sessions_room_code ON sessions(room_code);
 CREATE INDEX IF NOT EXISTS idx_session_players_session_id ON session_players(session_id);
 CREATE INDEX IF NOT EXISTS idx_session_players_user_id ON session_players(user_id);

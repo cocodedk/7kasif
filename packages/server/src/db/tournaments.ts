@@ -66,13 +66,14 @@ export async function saveScores(
     const userId = userIdMap.get(score.playerId) ?? null;
     await pool.query(
       `UPDATE session_players
-       SET final_plus_clusters = $1, final_minus_clusters = $2, final_net_score = $3, score_rows = $4
-       WHERE session_id = $5 AND player_name = $6`,
+       SET final_plus_clusters = $1, final_minus_clusters = $2, final_net_score = $3, score_rows = $4, user_id = $5
+       WHERE session_id = $6 AND player_name = $7`,
       [
         score.plusClusters,
         score.minusClusters,
         score.netScore,
         JSON.stringify(score.rows),
+        userId,
         sessionId,
         score.playerName,
       ],

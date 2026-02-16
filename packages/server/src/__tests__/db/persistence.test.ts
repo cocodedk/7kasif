@@ -219,7 +219,6 @@ describe('getPlayerStats', () => {
 
     const stats = await getPlayerStats(userId);
     expect(stats).not.toBeNull();
-    expect(stats!.email).toBe('bob@test.com');
     expect(stats!.displayName).toBe('Bob');
     expect(stats!.totalSessions).toBe(1);
     expect(stats!.totalMinusClusters).toBe(1);

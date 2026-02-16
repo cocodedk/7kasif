@@ -94,54 +94,33 @@ export async function sendMagicLink(email: string, isInvite: boolean = false): P
 }
 
 export async function verifyMagicToken(token: string): Promise<AuthResult> {
-  if (!token) {
-    throw new Error('Token is required');
-  }
-
+  if (!token) throw new Error('Token is required');
   const pool = getPool();
 
   const result = await pool.query(
-    `SELECT mt.id as token_id, mt.user_id, mt.expires_at, mt.used_at,
-            u.email, u.display_name, u.role
-     FROM magic_tokens mt
-     JOIN users u ON u.id = mt.user_id
-     WHERE mt.token = $1`,
+    `UPDATE magic_tokens SET used_at = NOW()
+     WHERE token = $1 AND used_at IS NULL AND expires_at > NOW()
+     RETURNING user_id`,
     [token],
   );
 
   if (result.rows.length === 0) {
-    throw new Error('Invalid or expired token');
+    throw new Error('Invalid, expired, or already-used token');
   }
 
-  const row = result.rows[0];
-
-  if (row.used_at) {
-    throw new Error('Token has already been used');
-  }
-
-  if (new Date(row.expires_at) < new Date()) {
-    throw new Error('Token has expired');
-  }
-
-  // Mark token as used
-  await pool.query(
-    'UPDATE magic_tokens SET used_at = NOW() WHERE id = $1',
-    [row.token_id],
+  const userId = result.rows[0].user_id;
+  const userResult = await pool.query(
+    'SELECT id, email, display_name, role FROM users WHERE id = $1',
+    [userId],
   );
-
-  const user: AuthUser = {
-    id: row.user_id,
-    email: row.email,
-    displayName: row.display_name,
-    role: row.role,
-  };
+  const row = userResult.rows[0];
+  const user: AuthUser = { id: row.id, email: row.email, displayName: row.display_name, role: row.role };
 
   const jwtToken = jwt.sign(
     { userId: user.id, email: user.email, role: user.role },
     getJwtSecret(),
     { expiresIn: '7d' },
   );
-
   return { user, token: jwtToken };
 }
 
