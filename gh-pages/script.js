@@ -50,6 +50,7 @@ async function loadLeaderboard() {
 
     tableEl.hidden = false;
   } catch (err) {
+    console.error('Leaderboard fetch failed:', err);
     loadingEl.hidden = true;
     errorEl.hidden = false;
   }

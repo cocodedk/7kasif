@@ -78,12 +78,18 @@ export async function handleApiRoute(
   }
 
   if (url === '/api/auth/verify' && method === 'POST') {
+    let body: any;
     try {
-      const body = JSON.parse(await readBody(req));
+      body = JSON.parse(await readBody(req));
+    } catch {
+      json(res, 400, { error: 'Invalid JSON body' });
+      return true;
+    }
+    try {
       const result = await verifyMagicToken(body.token);
       json(res, 200, result);
-    } catch (err: any) {
-      json(res, 401, { error: err.message });
+    } catch {
+      json(res, 401, { error: 'Invalid token' });
     }
     return true;
   }
@@ -100,7 +106,8 @@ export async function handleApiRoute(
       await sendMagicLink(body.email, true);
       json(res, 201, { user });
     } catch (err: any) {
-      json(res, 400, { error: err.message });
+      console.error('Admin create-user error:', err);
+      json(res, 400, { error: 'Bad request' });
     }
     return true;
   }

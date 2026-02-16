@@ -224,7 +224,7 @@ describe('POST /api/admin/create-user', () => {
 
     expect(res.status).toBe(400);
     const body = await res.json();
-    expect(body.error).toContain('already registered');
+    expect(body.error).toBe('Bad request');
   });
 });
 

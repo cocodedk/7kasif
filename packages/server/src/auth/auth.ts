@@ -34,7 +34,7 @@ export async function createUser(
   displayName: string,
   role: Role = 'player',
 ): Promise<AuthUser> {
-  if (!email || !email.includes('@')) {
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     throw new Error('A valid email is required');
   }
   if (!displayName || displayName.trim().length === 0) {
@@ -113,6 +113,10 @@ export async function verifyMagicToken(token: string): Promise<AuthResult> {
     'SELECT id, email, display_name, role FROM users WHERE id = $1',
     [userId],
   );
+  if (userResult.rows.length === 0) {
+    console.error(`Magic token claimed but user not found: userId=${userId}`);
+    throw new Error('User not found');
+  }
   const row = userResult.rows[0];
   const user: AuthUser = { id: row.id, email: row.email, displayName: row.display_name, role: row.role };
 

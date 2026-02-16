@@ -29,11 +29,21 @@ export async function saveSessionPlayers(
   players: { userId: number | null; playerName: string }[],
 ): Promise<void> {
   const pool = getPool();
-  for (const player of players) {
-    await pool.query(
-      'INSERT INTO session_players (session_id, user_id, player_name) VALUES ($1, $2, $3)',
-      [sessionId, player.userId, player.playerName],
-    );
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    for (const player of players) {
+      await client.query(
+        'INSERT INTO session_players (session_id, user_id, player_name) VALUES ($1, $2, $3)',
+        [sessionId, player.userId, player.playerName],
+      );
+    }
+    await client.query('COMMIT');
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
   }
 }
 
@@ -125,12 +135,12 @@ export async function loadTournament(sessionId: number): Promise<TournamentView 
     points: row.points,
     reversed: row.reversed,
     finishingCardValue: row.finishing_card || '',
-    timestamp: row.played_at,
+    timestamp: row.played_at instanceof Date ? row.played_at.toISOString() : String(row.played_at ?? ''),
   }));
 
   return {
     sessionId: session.session_code,
-    createdAt: session.started_at,
+    createdAt: session.started_at instanceof Date ? session.started_at.toISOString() : String(session.started_at ?? ''),
     playerScores,
     rounds,
     currentRound: rounds.length + 1,

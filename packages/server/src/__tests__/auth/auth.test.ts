@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import jwt from 'jsonwebtoken';
 import { createUser, sendMagicLink, verifyMagicToken, verifyToken } from '../../auth/auth.js';
 import { getTestPool, initTestDb, cleanTestDb, closeTestDb } from './test-db.js';
 
@@ -180,13 +181,11 @@ describe('JWT verification', () => {
   });
 
   it('should reject a token signed with a different secret', () => {
-    const jwt = require('jsonwebtoken');
     const fakeToken = jwt.sign({ userId: 1, email: 'fake@test.com' }, 'wrong-secret');
     expect(() => verifyToken(fakeToken)).toThrow('Invalid or expired token');
   });
 
   it('should reject an expired token', () => {
-    const jwt = require('jsonwebtoken');
     const expiredToken = jwt.sign(
       { userId: 1, email: 'alice@test.com' },
       process.env.JWT_SECRET!,
