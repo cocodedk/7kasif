@@ -61,7 +61,8 @@ export async function initTestDb(): Promise<void> {
       final_plus_clusters INT DEFAULT 0,
       final_minus_clusters INT DEFAULT 0,
       final_net_score INT DEFAULT 0,
-      score_rows JSONB DEFAULT '[]'
+      score_rows JSONB DEFAULT '[]',
+      UNIQUE (session_id, player_name)
     );
 
     CREATE TABLE IF NOT EXISTS rounds (
