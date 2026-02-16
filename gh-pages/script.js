@@ -13,14 +13,14 @@ function loadLeaderboard() {
     if (resolved) return;
     resolved = true;
     console.error('Leaderboard: ' + reason);
-    loadingEl.hidden = true;
+    loadingEl.style.display = 'none';
     errorEl.hidden = false;
   }
 
   function showEmpty() {
     if (resolved) return;
     resolved = true;
-    loadingEl.hidden = true;
+    loadingEl.style.display = 'none';
     emptyEl.hidden = false;
   }
 
@@ -38,7 +38,7 @@ function loadLeaderboard() {
       .then(function (data) {
         if (resolved) return;
         resolved = true;
-        loadingEl.hidden = true;
+        loadingEl.style.display = 'none';
 
         if (!Array.isArray(data) || data.length === 0) {
           emptyEl.hidden = false;
