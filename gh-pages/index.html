@@ -3,23 +3,68 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Hafte Kasif - The Dirty Seven</title>
+  <meta name="description" content="Hafte Kasif - The Dirty Seven. A chaotic Danish-Persian card game played online with friends.">
+  <meta property="og:title" content="Hafte Kasif - The Dirty Seven 🃏🇩🇰">
+  <meta property="og:description" content="A card game that's basically what happens when Uno has a chaotic Danish-Persian cousin. Play online now.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://cocodedk.github.io/7kasif/">
+  <meta property="og:site_name" content="Hafte Kasif - The Dirty Seven">
+  <title>Hafte Kasif - The Dirty Seven 🃏🇩🇰</title>
   <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <div class="container">
-    <header>
-      <h1>Hafte Kasif</h1>
-      <p class="subtitle">The Dirty Seven - Leaderboard</p>
-      <a href="https://7kasif.dk" class="play-btn">Play Now</a>
-    </header>
+  <main>
+  <!-- Hero Section -->
+  <section class="hero" aria-label="Hero section">
+    <div class="floating-cards" aria-hidden="true">
+      <div class="card-float card-1">🃏</div>
+      <div class="card-float card-2">♠️</div>
+      <div class="card-float card-3">♥️</div>
+      <div class="card-float card-4">♦️</div>
+      <div class="card-float card-5">🃏</div>
+      <div class="card-float card-6">♣️</div>
+    </div>
+    <div class="hero-content">
+      <h1 class="hero-title">
+        <span class="suit suit-left">🃏</span>
+        7kasif
+        <span class="suit suit-right">🇩🇰</span>
+      </h1>
+      <p class="hero-subtitle">Hafte Kasif — The Dirty Seven</p>
+      <p class="hero-tagline">A card game that's basically what happens when Uno has a chaotic Danish-Persian cousin. Now playable online.</p>
+      <a href="https://7kasif.dk" class="cta-button">Play Now 🎮</a>
+    </div>
+  </section>
 
-    <main>
-      <section class="leaderboard-section">
-        <h2>All-Time Rankings</h2>
-        <div id="leaderboard-loading" class="loading">Loading leaderboard...</div>
-        <div id="leaderboard-error" class="error" hidden>Could not load leaderboard. Try again later.</div>
+  <!-- The Game Section -->
+  <section class="game-section" aria-label="About the game">
+    <div class="container">
+      <h2 class="section-title">What is Hafte Kasif?</h2>
+      <div class="game-content">
+        <div class="game-card">
+          <div class="game-icon">🎴</div>
+          <p class="game-description">
+            <strong>Hafte Kasif</strong> (also known as <strong>Bisheori</strong>) is a card game variant combining elements of Uno and other trick-taking games. The rules are... let's say <em>locally defined</em> and fiercely debated.
+          </p>
+          <p class="game-description">
+            If you're not part of our group, you probably won't understand the scoring. And that's okay.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Leaderboard Section -->
+  <section class="leaderboard-section" aria-label="Leaderboard">
+    <div class="container">
+      <h2 class="section-title">All-Time Rankings</h2>
+      <div id="leaderboard-loading" class="loading">Loading leaderboard...</div>
+      <div id="leaderboard-error" class="error" hidden>Could not load leaderboard. Try again later.</div>
+      <div class="table-wrap">
         <table id="leaderboard-table" hidden>
           <thead>
             <tr>
@@ -35,35 +80,105 @@
           </thead>
           <tbody id="leaderboard-body"></tbody>
         </table>
-        <div id="leaderboard-empty" class="empty" hidden>No games played yet. Be the first!</div>
-      </section>
+      </div>
+      <div id="leaderboard-empty" class="empty" hidden>No games played yet. Be the first!</div>
+    </div>
+  </section>
 
-      <section class="about-section">
-        <h2>About the Game</h2>
-        <p>
-          Hafte Kasif (The Dirty Seven) is a card game variant combining elements of Uno and other
-          trick-taking games — what happens when Uno has a chaotic Danish-Persian cousin.
-          The rules are... let's say <em>locally defined</em> and fiercely debated.
-        </p>
-        <p>
-          If you're not part of our group, you probably won't understand the scoring. And that's okay.
-        </p>
-        <h3>Game Creators</h3>
-        <p>
-          Khosrow Davani (X-Man), Masoud Ghaemi Moghadam (ZMJ), Mehdi Morali (Fanar),
-          Hamid, Saeed, Mohsen Zaboli (AAA), Babak Bandpey (Panik),
-          Amir Hussein Khodabash (6), and Hussein Ferdowsipour (GaGa).
-        </p>
-        <p>
-          Score tracker: <a href="https://cocodedk.github.io/D7/">D7</a>
-        </p>
-      </section>
-    </main>
+  <!-- The Legends Section -->
+  <section class="legends-section" aria-label="Game creators">
+    <div class="container">
+      <h2 class="section-title">The Legends</h2>
+      <p class="legends-subtitle">The legendary competitors battling for card game supremacy</p>
+      <div class="legends-grid">
+        <div class="legend-card">
+          <div class="legend-emoji">🎯</div>
+          <h3 class="legend-name">Babak</h3>
+          <p class="legend-role">The Builder</p>
+        </div>
+        <div class="legend-card">
+          <div class="legend-emoji">🃏</div>
+          <h3 class="legend-name">Khosrow</h3>
+          <p class="legend-role">The Joker</p>
+        </div>
+        <div class="legend-card">
+          <div class="legend-emoji">🎲</div>
+          <h3 class="legend-name">Mohsen</h3>
+          <p class="legend-role">The Gambler</p>
+        </div>
+        <div class="legend-card">
+          <div class="legend-emoji">🏆</div>
+          <h3 class="legend-name">Massoud</h3>
+          <p class="legend-role">The Champion</p>
+        </div>
+        <div class="legend-card">
+          <div class="legend-emoji">♠️</div>
+          <h3 class="legend-name">Mehdi</h3>
+          <p class="legend-role">The Spade</p>
+        </div>
+        <div class="legend-card">
+          <div class="legend-emoji">6️⃣</div>
+          <h3 class="legend-name">Hussein 6</h3>
+          <p class="legend-role">The Number</p>
+        </div>
+        <div class="legend-card">
+          <div class="legend-emoji">🎸</div>
+          <h3 class="legend-name">Hussein Gaga</h3>
+          <p class="legend-role">The Rockstar</p>
+        </div>
+        <div class="legend-card">
+          <div class="legend-emoji">♦️</div>
+          <h3 class="legend-name">Behzad</h3>
+          <p class="legend-role">The Diamond</p>
+        </div>
+      </div>
+    </div>
+  </section>
 
-    <footer>
-      <p>&copy; 2026 Hafte Kasif &middot; <a href="https://github.com/cocodedk/7kasif">GitHub</a></p>
-    </footer>
-  </div>
+  <!-- Tech Stack Section -->
+  <section class="tech-section" aria-label="Technology stack">
+    <div class="container">
+      <h2 class="section-title">Tech Stack</h2>
+      <div class="tech-grid">
+        <div class="tech-item">
+          <div class="tech-label">Frontend</div>
+          <div class="tech-value">React + TypeScript + Vite + Tailwind CSS</div>
+        </div>
+        <div class="tech-item">
+          <div class="tech-label">Backend</div>
+          <div class="tech-value">Node.js + WebSockets</div>
+        </div>
+        <div class="tech-item">
+          <div class="tech-label">Database</div>
+          <div class="tech-value">PostgreSQL</div>
+        </div>
+        <div class="tech-item">
+          <div class="tech-label">Deployment</div>
+          <div class="tech-value">Docker + Nginx + GitHub Actions CI/CD</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-content">
+        <p class="footer-text">
+          Built with <span class="coffee">☕</span> and competitive spirit in Denmark
+        </p>
+        <p class="footer-author">
+          <strong>Babak Bandpey</strong> — <a href="https://cocode.dk" target="_blank" rel="noopener noreferrer">cocode.dk</a>
+        </p>
+        <p class="footer-links">
+          <a href="https://cocodedk.github.io/D7/" target="_blank" rel="noopener noreferrer">D7 Score Tracker</a>
+          &middot;
+          <a href="https://github.com/cocodedk/7kasif" target="_blank" rel="noopener noreferrer">GitHub</a>
+        </p>
+      </div>
+    </div>
+  </footer>
+  </main>
 
   <script src="script.js"></script>
 </body>
