@@ -68,7 +68,7 @@ beforeEach(async () => {
 });
 
 afterAll(async () => {
-  server.close();
+  server?.close();
   await closeTestDb();
 });
 

@@ -111,8 +111,8 @@ beforeEach(async () => {
 });
 
 afterAll(async () => {
-  wss.close();
-  httpServer.close();
+  wss?.close();
+  httpServer?.close();
   await closeTestDb();
 });
 
