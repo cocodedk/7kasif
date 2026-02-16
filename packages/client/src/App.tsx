@@ -1,5 +1,8 @@
+import { useState, useEffect } from 'react';
 import { useWebSocket } from './hooks/useWebSocket.js';
 import { useGameState } from './hooks/useGameState.js';
+import { useAuth } from './hooks/useAuth.js';
+import { LoginScreen } from './screens/LoginScreen.js';
 import { HomeScreen } from './screens/HomeScreen.js';
 import { WaitingRoom } from './screens/WaitingRoom.js';
 import { GameOverScreen } from './screens/GameOverScreen.js';
@@ -15,8 +18,78 @@ export function App() {
 }
 
 function GameApp() {
-  const { send, connected, onMessage } = useWebSocket();
+  const { user, token, isAuthenticated, requestMagicLink, verifyMagicToken, logout } = useAuth();
+  const [verifyError, setVerifyError] = useState('');
+  const [verifying, setVerifying] = useState(false);
+
+  // Check URL for magic link token on mount
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const magicToken = url.searchParams.get('token');
+    const isVerifyPath = url.pathname === '/auth/verify';
+
+    if (isVerifyPath && magicToken) {
+      setVerifying(true);
+      verifyMagicToken(magicToken)
+        .then(() => {
+          // Clean URL
+          window.history.replaceState({}, '', '/');
+        })
+        .catch((err) => {
+          setVerifyError(err.message || 'Verification failed');
+          window.history.replaceState({}, '', '/');
+        })
+        .finally(() => setVerifying(false));
+    }
+  }, [verifyMagicToken]);
+
+  if (verifying) {
+    return (
+      <div className="h-full flex flex-col items-center justify-center px-6">
+        <h1 className="text-3xl font-bold mb-1">Hafte Kasif</h1>
+        <p className="text-gray-400 text-sm">Verifying login...</p>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <LoginScreen
+        onRequestLink={requestMagicLink}
+        error={verifyError}
+      />
+    );
+  }
+
+  return (
+    <AuthenticatedGame
+      token={token}
+      displayName={user?.displayName}
+      onLogout={logout}
+    />
+  );
+}
+
+function AuthenticatedGame({
+  token,
+  displayName,
+  onLogout,
+}: {
+  token: string | null;
+  displayName?: string;
+  onLogout: () => void;
+}) {
+  const { send: rawSend, connected, onMessage } = useWebSocket();
   const { state, dispatch } = useGameState(onMessage);
+
+  // Wrap send to inject token into CREATE_ROOM and JOIN_ROOM messages
+  const send = (msg: Parameters<typeof rawSend>[0]) => {
+    if (token && (msg.type === 'CREATE_ROOM' || msg.type === 'JOIN_ROOM')) {
+      rawSend({ ...msg, token });
+    } else {
+      rawSend(msg);
+    }
+  };
 
   const playerId = state.lobby.playerId;
   const isHost = state.lobby.players.length > 0 && state.lobby.players[0]?.id === playerId;
@@ -74,5 +147,18 @@ function GameApp() {
   }
 
   // Home
-  return <HomeScreen send={send} connected={connected} />;
+  return (
+    <div className="relative h-full">
+      <div className="absolute top-4 right-4 flex items-center gap-3">
+        <span className="text-sm text-gray-300">{displayName}</span>
+        <button
+          onClick={onLogout}
+          className="text-xs text-gray-500 hover:text-gray-300"
+        >
+          Logout
+        </button>
+      </div>
+      <HomeScreen send={send} connected={connected} />
+    </div>
+  );
 }

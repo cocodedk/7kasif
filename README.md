@@ -1,6 +1,6 @@
 # 7kasif
 
-A multiplayer card game (Hafte Kasif / Seven Explorers) built with React, Node.js, and WebSockets.
+A multiplayer card game (Hafte Kasif / The Dirty Seven) built with React, Node.js, and WebSockets.
 
 ## Tech Stack
 

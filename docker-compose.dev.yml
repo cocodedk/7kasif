@@ -11,6 +11,13 @@ services:
     environment:
       - NODE_ENV=development
       - PORT=3000
+      - DATABASE_URL=postgresql://hk:devpass@postgres:5432/hafte_kasif
+      - JWT_SECRET=dev-jwt-secret-change-in-production
+      - CORS_ORIGIN=http://localhost:5173
+      - VITE_DEV_URL=http://client:5173
+      - APP_URL=http://localhost:3000
+    depends_on:
+      - postgres
     command: npx tsx watch packages/server/src/server.ts
     restart: unless-stopped
 
@@ -23,18 +30,21 @@ services:
     volumes:
       - ./packages/shared/src:/app/packages/shared/src
       - ./packages/client/src:/app/packages/client/src
+      - ./packages/client/public:/app/packages/client/public
       - ./packages/client/index.html:/app/packages/client/index.html
       - ./packages/client/tailwind.config.js:/app/packages/client/tailwind.config.js
     environment:
       - NODE_ENV=development
       - WS_PROXY_TARGET=ws://server:3000
-      - VITE_DEV_PREVIEW=true
+      - VITE_DEV_PREVIEW=false
     command: npx vite --host 0.0.0.0 --port 5173
     working_dir: /app/packages/client
     restart: unless-stopped
 
   postgres:
     image: postgres:16-alpine
+    ports:
+      - "127.0.0.1:5432:5432"
     environment:
       POSTGRES_DB: hafte_kasif
       POSTGRES_USER: hk

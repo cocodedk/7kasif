@@ -1,6 +1,17 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { vi } from 'vitest';
 import { WebSocketServer, WebSocket } from 'ws';
 import { createServer, type Server } from 'http';
+
+let mockUserCounter = 0;
+vi.mock('../auth/auth.js', () => ({
+  verifyToken: (token: string) => {
+    if (!token.startsWith('test-token-')) throw new Error('Invalid token');
+    const id = parseInt(token.replace('test-token-', ''), 10);
+    return { userId: id, email: `user${id}@test.com`, role: 'player' };
+  },
+}));
+
 import { ConnectionManager } from '../rooms/ConnectionManager.js';
 import { RoomManager } from '../rooms/RoomManager.js';
 import { MessageHandler } from '../rooms/MessageHandler.js';
@@ -56,6 +67,10 @@ function sendMsg(ws: WebSocket, msg: ClientMessage): void {
   ws.send(JSON.stringify(msg));
 }
 
+function nextToken(): string {
+  return `test-token-${++mockUserCounter}`;
+}
+
 function waitForMessage(
   messages: ServerMessage[],
   type: string,
@@ -92,7 +107,7 @@ describe('Server Integration', () => {
   it('should create a room and receive room code', async () => {
     const { ws, messages } = await createClient(port);
 
-    sendMsg(ws, { type: 'CREATE_ROOM', playerName: 'Alice', mode: 'standard' });
+    sendMsg(ws, { type: 'CREATE_ROOM', playerName: 'Alice', mode: 'standard', token: nextToken() });
     const msg = await waitForMessage(messages, 'ROOM_CREATED');
 
     expect(msg.type).toBe('ROOM_CREATED');
@@ -106,11 +121,11 @@ describe('Server Integration', () => {
 
   it('should allow joining an existing room', async () => {
     const host = await createClient(port);
-    sendMsg(host.ws, { type: 'CREATE_ROOM', playerName: 'Alice', mode: 'standard' });
+    sendMsg(host.ws, { type: 'CREATE_ROOM', playerName: 'Alice', mode: 'standard', token: nextToken() });
     const created = await waitForMessage(host.messages, 'ROOM_CREATED') as any;
 
     const joiner = await createClient(port);
-    sendMsg(joiner.ws, { type: 'JOIN_ROOM', roomCode: created.roomCode, playerName: 'Bob' });
+    sendMsg(joiner.ws, { type: 'JOIN_ROOM', roomCode: created.roomCode, playerName: 'Bob', token: nextToken() });
     const joined = await waitForMessage(joiner.messages, 'ROOM_JOINED');
 
     expect(joined.type).toBe('ROOM_JOINED');
@@ -125,7 +140,7 @@ describe('Server Integration', () => {
   it('should reject joining a nonexistent room', async () => {
     const { ws, messages } = await createClient(port);
 
-    sendMsg(ws, { type: 'JOIN_ROOM', roomCode: 'ZZZZ', playerName: 'Bob' });
+    sendMsg(ws, { type: 'JOIN_ROOM', roomCode: 'ZZZZ', playerName: 'Bob', token: nextToken() });
     const msg = await waitForMessage(messages, 'MOVE_REJECTED');
 
     expect(msg.type).toBe('MOVE_REJECTED');
@@ -135,17 +150,17 @@ describe('Server Integration', () => {
   it('should play a full game with 3 players', async () => {
     // Create room
     const host = await createClient(port);
-    sendMsg(host.ws, { type: 'CREATE_ROOM', playerName: 'Alice', mode: 'standard' });
+    sendMsg(host.ws, { type: 'CREATE_ROOM', playerName: 'Alice', mode: 'standard', token: nextToken() });
     const created = await waitForMessage(host.messages, 'ROOM_CREATED') as any;
     const roomCode = created.roomCode;
 
     // Join 2 more players
     const p2 = await createClient(port);
-    sendMsg(p2.ws, { type: 'JOIN_ROOM', roomCode, playerName: 'Bob' });
+    sendMsg(p2.ws, { type: 'JOIN_ROOM', roomCode, playerName: 'Bob', token: nextToken() });
     await waitForMessage(p2.messages, 'ROOM_JOINED');
 
     const p3 = await createClient(port);
-    sendMsg(p3.ws, { type: 'JOIN_ROOM', roomCode, playerName: 'Charlie' });
+    sendMsg(p3.ws, { type: 'JOIN_ROOM', roomCode, playerName: 'Charlie', token: nextToken() });
     await waitForMessage(p3.messages, 'ROOM_JOINED');
 
     // Start game
@@ -194,15 +209,15 @@ describe('Server Integration', () => {
 
   it('should reject non-host starting the game', async () => {
     const host = await createClient(port);
-    sendMsg(host.ws, { type: 'CREATE_ROOM', playerName: 'Alice', mode: 'standard' });
+    sendMsg(host.ws, { type: 'CREATE_ROOM', playerName: 'Alice', mode: 'standard', token: nextToken() });
     const created = await waitForMessage(host.messages, 'ROOM_CREATED') as any;
 
     const p2 = await createClient(port);
-    sendMsg(p2.ws, { type: 'JOIN_ROOM', roomCode: created.roomCode, playerName: 'Bob' });
+    sendMsg(p2.ws, { type: 'JOIN_ROOM', roomCode: created.roomCode, playerName: 'Bob', token: nextToken() });
     await waitForMessage(p2.messages, 'ROOM_JOINED');
 
     const p3 = await createClient(port);
-    sendMsg(p3.ws, { type: 'JOIN_ROOM', roomCode: created.roomCode, playerName: 'Charlie' });
+    sendMsg(p3.ws, { type: 'JOIN_ROOM', roomCode: created.roomCode, playerName: 'Charlie', token: nextToken() });
     await waitForMessage(p3.messages, 'ROOM_JOINED');
 
     // Non-host tries to start
@@ -217,11 +232,11 @@ describe('Server Integration', () => {
 
   it('should reject starting with fewer than 3 players', async () => {
     const host = await createClient(port);
-    sendMsg(host.ws, { type: 'CREATE_ROOM', playerName: 'Alice', mode: 'standard' });
+    sendMsg(host.ws, { type: 'CREATE_ROOM', playerName: 'Alice', mode: 'standard', token: nextToken() });
     await waitForMessage(host.messages, 'ROOM_CREATED');
 
     const p2 = await createClient(port);
-    sendMsg(p2.ws, { type: 'JOIN_ROOM', roomCode: (host.messages[0] as any).roomCode, playerName: 'Bob' });
+    sendMsg(p2.ws, { type: 'JOIN_ROOM', roomCode: (host.messages[0] as any).roomCode, playerName: 'Bob', token: nextToken() });
     await waitForMessage(p2.messages, 'ROOM_JOINED');
 
     // Only 2 players — try to start

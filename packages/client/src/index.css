@@ -90,3 +90,13 @@ html, body, #root {
 .animate-play-reveal {
   animation: play-reveal 1.8s ease-out forwards;
 }
+
+/* Sea creatures swimming animation */
+@keyframes swim-right {
+  from {
+    left: -80px;
+  }
+  to {
+    left: 100%;
+  }
+}

@@ -4,6 +4,7 @@ import { FINISH_POINTS } from '@hafte-kasif/shared';
 import { ConnectionManager } from './ConnectionManager.js';
 import { RoomManager } from './RoomManager.js';
 import { applyAction } from '../engine/game.js';
+import { verifyToken } from '../auth/auth.js';
 
 export class MessageHandler {
   constructor(
@@ -24,10 +25,10 @@ export class MessageHandler {
 
     switch (msg.type) {
       case 'CREATE_ROOM':
-        this.handleCreateRoom(ws, msg.playerName, msg.mode);
+        this.handleCreateRoom(ws, msg.playerName, msg.mode, msg.token);
         break;
       case 'JOIN_ROOM':
-        this.handleJoinRoom(ws, msg.roomCode, msg.playerName);
+        this.handleJoinRoom(ws, msg.roomCode, msg.playerName, msg.token);
         break;
       case 'START_GAME':
         if (playerId) this.handleStartGame(playerId, msg.cardsPerPlayer);
@@ -44,8 +45,25 @@ export class MessageHandler {
     }
   }
 
-  private handleCreateRoom(ws: WebSocket, playerName: string, mode: any): void {
-    const playerId = `player_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+  private resolvePlayerId(token?: string): { playerId: string; userId: number } | null {
+    if (token) {
+      try {
+        const decoded = verifyToken(token);
+        return { playerId: `user_${decoded.userId}`, userId: decoded.userId };
+      } catch {
+        // Invalid token
+      }
+    }
+    return null;
+  }
+
+  private handleCreateRoom(ws: WebSocket, playerName: string, mode: any, token?: string): void {
+    const resolved = this.resolvePlayerId(token);
+    if (!resolved) {
+      this.sendTo(ws, { type: 'MOVE_REJECTED', reason: 'Authentication required' });
+      return;
+    }
+    const { playerId } = resolved;
     this.connections.add(ws, playerId, playerName);
 
     const room = this.rooms.createRoom(playerId, playerName, mode);
@@ -58,8 +76,13 @@ export class MessageHandler {
     } satisfies ServerMessage);
   }
 
-  private handleJoinRoom(ws: WebSocket, roomCode: string, playerName: string): void {
-    const playerId = `player_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+  private handleJoinRoom(ws: WebSocket, roomCode: string, playerName: string, token?: string): void {
+    const resolved = this.resolvePlayerId(token);
+    if (!resolved) {
+      this.sendTo(ws, { type: 'MOVE_REJECTED', reason: 'Authentication required' });
+      return;
+    }
+    const { playerId } = resolved;
     this.connections.add(ws, playerId, playerName);
 
     const room = this.rooms.joinRoom(roomCode, playerId, playerName);
