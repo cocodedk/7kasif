@@ -27,6 +27,6 @@ describe('Ace — play matching value (not suit)', () => {
     log('Verify: play rejected');
     expect(r2.ok).toBe(false);
     if (r2.ok) return;
-    expect(r2.reason).toContain('Must play an Ace or a card of hearts');
+    expect(r2.reason).toContain('Must play an Ace, a Jack, or a card of hearts');
   });
 });

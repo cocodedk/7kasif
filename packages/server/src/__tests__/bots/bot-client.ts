@@ -35,11 +35,16 @@ export class BotClient {
     });
   }
 
+  get connected(): boolean {
+    return this.ws !== null && this.ws.readyState === WebSocket.OPEN;
+  }
+
   send(msg: ClientMessage): void {
-    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-      throw new Error(`[${this.name}] WebSocket not connected`);
+    if (!this.connected) {
+      console.warn(`[${this.name}] Skipping send — WebSocket not connected`);
+      return;
     }
-    this.ws.send(JSON.stringify(msg));
+    this.ws!.send(JSON.stringify(msg));
   }
 
   onMessage(handler: MessageHandler): void {

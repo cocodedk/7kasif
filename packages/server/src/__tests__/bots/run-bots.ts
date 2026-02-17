@@ -1,6 +1,9 @@
 import { BotRunner } from './bot-runner.js';
 
-const roomCode = process.argv[2];
+const args = process.argv.slice(2);
+const roundsFlag = args.find(a => a.startsWith('--rounds='));
+const rounds = roundsFlag ? parseInt(roundsFlag.split('=')[1], 10) : 1;
+const roomCode = args.find(a => !a.startsWith('--'));
 
 const runner = new BotRunner();
 
@@ -10,8 +13,8 @@ if (roomCode) {
   await runner.start(roomCode, 3);
 } else {
   // Autonomous mode: 4 bots create and play a game
-  console.log('No room code — starting autonomous 4-bot game');
-  await runner.startAutonomous();
+  console.log(`No room code — starting autonomous 4-bot game (${rounds} rounds)`);
+  await runner.startAutonomous(rounds);
 }
 
 process.on('SIGINT', () => {

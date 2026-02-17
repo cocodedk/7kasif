@@ -25,7 +25,7 @@ services:
       - ADMIN_EMAIL=${ADMIN_EMAIL}
     depends_on:
       - postgres
-    command: npx tsx watch packages/server/src/server.ts
+    command: npx tsx watch --ignore 'packages/server/src/__tests__/**' packages/server/src/server.ts
     restart: unless-stopped
 
   client:

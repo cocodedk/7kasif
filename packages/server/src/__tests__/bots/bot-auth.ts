@@ -21,7 +21,7 @@ export async function createBotCredentials(count: number = BOT_NAMES.length): Pr
 
   for (const name of BOT_NAMES.slice(0, count)) {
     const email = `bot-${name.toLowerCase()}@7kasif.test`;
-    const displayName = `Bot ${name}`;
+    const displayName = name;
 
     let user;
     try {

@@ -27,6 +27,8 @@ export class RoomManager {
   private rooms = new Map<string, Room>();
 
   createRoom(hostId: string, hostName: string, mode: GameMode): Room {
+    // Remove player from any existing rooms
+    this.removePlayerFromAllRooms(hostId);
     const code = this.generateCode();
     const sessionId = `session_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
     const room: Room = {
@@ -58,6 +60,8 @@ export class RoomManager {
     if (room.players.length >= 4) return null;
     if (room.players.some(p => p.id === playerId)) return room;
 
+    // Remove player from any other rooms before joining
+    this.removePlayerFromAllRooms(playerId);
     room.players.push({ id: playerId, name: playerName });
     room.lastActivityAt = Date.now();
     return room;
@@ -203,6 +207,15 @@ export class RoomManager {
 
   removeRoom(code: string): void {
     this.rooms.delete(code);
+  }
+
+  private removePlayerFromAllRooms(playerId: string): void {
+    for (const [code, room] of this.rooms) {
+      room.players = room.players.filter(p => p.id !== playerId);
+      if (room.players.length === 0) {
+        this.rooms.delete(code);
+      }
+    }
   }
 
   removePlayer(code: string, playerId: string): void {

@@ -213,6 +213,8 @@ function applyPlayCard(state: GameState, playerId: string, action: PlayCardActio
     if (card.value === 'ace') {
       state.pendingEffect.suit = card.suit;
       state.pendingEffect.acesPlayed++;
+      // Reset draw flag — player may draw to break this new ace in the chain
+      state.hasDrawnThisTurn = false;
       // Check if player's hand is empty after Ace
       if (player.hand.length === 0) {
         events.push(...calculateGameEnd(state, playerId, card));
@@ -266,6 +268,8 @@ function applyCardEffect(
     case 'ace': {
       // Start Ace chain
       state.pendingEffect = { type: 'ace-chain', suit: card.suit, acesPlayed: 1 };
+      // Reset draw flag — player may draw to break this ace chain
+      state.hasDrawnThisTurn = false;
       // Don't advance turn — player must play again or draw
       return events;
     }
@@ -490,6 +494,7 @@ function applyDrawCard(state: GameState, playerId: string): GameEvent[] {
     if (pen.drawn > pen.penalty) {
       // Took the optional extra draw — stay on player so they can play or pass
       state.pendingEffect = null;
+      state.hasDrawnThisTurn = true;
     }
     // Otherwise stay on current player
     return events;

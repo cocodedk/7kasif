@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import type { ClientMessage } from '@hafte-kasif/shared';
 
 interface WaitingRoomProps {
@@ -10,6 +10,7 @@ interface WaitingRoomProps {
 
 export function WaitingRoom({ roomCode, players, isHost, send }: WaitingRoomProps) {
   const [cardsPerPlayer, setCardsPerPlayer] = useState(7);
+  const [copied, setCopied] = useState(false);
 
   const canStart = players.length >= 3 && players.length <= 4;
 
@@ -17,14 +18,26 @@ export function WaitingRoom({ roomCode, players, isHost, send }: WaitingRoomProp
     send({ type: 'START_GAME', cardsPerPlayer });
   };
 
+  const handleCopyCode = useCallback(() => {
+    navigator.clipboard.writeText(roomCode).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+  }, [roomCode]);
+
   return (
     <div className="h-full flex flex-col items-center justify-center px-6">
       <h2 className="text-xl font-bold mb-2">Waiting Room</h2>
 
-      <div className="bg-white/10 rounded-xl px-6 py-4 mb-6">
+      <div
+        className="bg-white/10 rounded-xl px-6 py-4 mb-6 cursor-pointer active:bg-white/20 transition-colors"
+        onClick={handleCopyCode}
+      >
         <p className="text-gray-400 text-xs text-center mb-1">Room Code</p>
         <p className="text-4xl font-mono font-bold tracking-widest text-center">{roomCode}</p>
-        <p className="text-gray-400 text-xs text-center mt-1">Share this code with friends</p>
+        <p className="text-gray-400 text-xs text-center mt-1">
+          {copied ? 'Copied!' : 'Tap to copy'}
+        </p>
       </div>
 
       <div className="w-full max-w-xs space-y-3 mb-6">

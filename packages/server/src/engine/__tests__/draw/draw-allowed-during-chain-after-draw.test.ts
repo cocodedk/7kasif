@@ -24,7 +24,7 @@ describe('Draw — allowed during chain even after a normal draw', () => {
     expect(r2.ok).toBe(true);
     if (!r2.ok) return;
     expect(r2.newState.pendingEffect?.type).toBe('ace-chain');
-    expect(r2.newState.hasDrawnThisTurn).toBe(true);
+    expect(r2.newState.hasDrawnThisTurn).toBe(false);
 
     log('p1 draws to break ace chain — should succeed despite hasDrawnThisTurn');
     const r3 = applyAction(r2.newState, 'p1', { type: 'DRAW_CARD' });

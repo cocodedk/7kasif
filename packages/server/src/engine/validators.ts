@@ -73,6 +73,8 @@ export function canPlayInChain(card: Card, chain: PendingChain, mode: GameState[
 export function canPlayOnAce(card: Card, aceEffect: PendingAce): boolean {
   // Can play another Ace
   if (card.value === 'ace') return true;
+  // Jack is wild — always playable
+  if (card.value === 'jack') return true;
   // Or a card matching the suit of the last Ace
   if (card.suit === aceEffect.suit) return true;
   return false;
@@ -141,7 +143,11 @@ export function validatePlayCard(
   // During an Ace chain
   if (state.pendingEffect?.type === 'ace-chain') {
     if (!canPlayOnAce(card, state.pendingEffect)) {
-      return `Must play an Ace or a card of ${state.pendingEffect.suit}`;
+      return `Must play an Ace, a Jack, or a card of ${state.pendingEffect.suit}`;
+    }
+    // Jack requires declared suit even during ace chain
+    if (card.value === 'jack' && !action.declaredSuit) {
+      return 'Must declare a suit when playing a Jack';
     }
     return null;
   }

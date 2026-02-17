@@ -121,6 +121,13 @@ function applyFirstCardEffects(state: GameState, dealerIndex: number, card: Card
       }
       break;
     }
+    case 'king': {
+      // Skip next player + they draw 1
+      const skippedIdx = nextIdx(dealerIndex, 1);
+      drawCardsFromDeck(state, skippedIdx, 1);
+      state.currentPlayerIndex = nextIdx(dealerIndex, 2);
+      break;
+    }
     case 10: {
       // Reverse direction
       state.direction = -1;
