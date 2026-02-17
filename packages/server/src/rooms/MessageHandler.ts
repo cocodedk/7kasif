@@ -128,13 +128,27 @@ export class MessageHandler {
       return;
     }
 
-    const state = this.rooms.startGame(room.code, cardsPerPlayer);
-    if (!state) {
+    const result = this.rooms.startGame(room.code, cardsPerPlayer);
+    if (!result) {
       this.connections.send(playerId, {
         type: 'MOVE_REJECTED',
         reason: 'Cannot start game (need 3-4 players, valid card count)',
       });
       return;
+    }
+
+    // Send debug game init info (env-gated)
+    if (process.env.DEBUG_GAME_LOG) {
+      for (const p of room.players) {
+        this.connections.send(p.id, {
+          type: 'DEBUG_GAME_INIT',
+          deck: result.deck,
+          dealerId: result.state.dealerId,
+          cardsPerPlayer,
+          mode: room.mode,
+          players: room.players.map(pp => ({ id: pp.id, name: pp.name })),
+        } satisfies import('@hafte-kasif/shared').ServerMessage);
+      }
     }
 
     this.broadcastGameState(room.code);
@@ -210,13 +224,27 @@ export class MessageHandler {
       return;
     }
 
-    const state = this.rooms.startGame(room.code, cardsPerPlayer);
-    if (!state) {
+    const result = this.rooms.startGame(room.code, cardsPerPlayer);
+    if (!result) {
       this.connections.send(playerId, {
         type: 'MOVE_REJECTED',
         reason: 'Cannot start next round',
       });
       return;
+    }
+
+    // Send debug game init info (env-gated)
+    if (process.env.DEBUG_GAME_LOG) {
+      for (const p of room.players) {
+        this.connections.send(p.id, {
+          type: 'DEBUG_GAME_INIT',
+          deck: result.deck,
+          dealerId: result.state.dealerId,
+          cardsPerPlayer,
+          mode: room.mode,
+          players: room.players.map(pp => ({ id: pp.id, name: pp.name })),
+        } satisfies import('@hafte-kasif/shared').ServerMessage);
+      }
     }
 
     this.broadcastGameState(room.code);

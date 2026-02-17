@@ -51,6 +51,7 @@ const initialState: AppState = {
 function reducer(state: AppState, action: AppAction): AppState {
   switch (action.type) {
     case 'ROOM_CREATED':
+      window.location.hash = action.roomCode;
       return {
         ...state,
         lobby: {
@@ -62,6 +63,7 @@ function reducer(state: AppState, action: AppAction): AppState {
         error: null,
       };
     case 'ROOM_JOINED':
+      if (state.lobby.roomCode) window.location.hash = state.lobby.roomCode;
       return {
         ...state,
         lobby: {
@@ -87,6 +89,7 @@ function reducer(state: AppState, action: AppAction): AppState {
     case 'CLEAR_GAME_OVER':
       return { ...state, gameOver: null, game: null };
     case 'RESET':
+      window.location.hash = '';
       return initialState;
     default:
       return state;

@@ -93,5 +93,6 @@ export function createTestState(options: {
     winner: null,
     losers: [],
     finishingCard: null,
+    pendingWinner: null,
   };
 }

@@ -71,6 +71,7 @@ export interface GameState {
   winner: string | null; // playerId
   losers: string[]; // playerIds (can be multiple on tie reversal)
   finishingCard: Card | null;
+  pendingWinner: { playerId: string; card: Card } | null;
 }
 
 export type GameMode = 'standard' | 'freestyle';
@@ -361,6 +362,15 @@ export interface SessionEndedMessage {
   tournament: TournamentView;
 }
 
+export interface DebugGameInitMessage {
+  type: 'DEBUG_GAME_INIT';
+  deck: Card[];
+  dealerId: string;
+  cardsPerPlayer: number;
+  mode: GameMode;
+  players: { id: string; name: string }[];
+}
+
 export type ServerMessage =
   | RoomCreatedMessage
   | RoomJoinedMessage
@@ -368,7 +378,8 @@ export type ServerMessage =
   | MoveRejectedMessage
   | GameOverMessage
   | TournamentUpdateMessage
-  | SessionEndedMessage;
+  | SessionEndedMessage
+  | DebugGameInitMessage;
 
 // ─── Player View (filtered state — hides other players' cards) ───
 

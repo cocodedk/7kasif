@@ -188,11 +188,19 @@ export function validateDrawCard(state: GameState, playerId: string): string | n
   if (state.pendingEffect?.type === 'queen-reveal' && state.pendingEffect.targetPlayerId === playerId) {
     return 'You must reveal a card first';
   }
+  // During seven-chain: always allow draw (accept chain penalty)
+  if (state.pendingEffect?.type === 'seven-chain') {
+    return null;
+  }
   // During seven-penalty: can draw up to penalty + 1 (the optional extra)
   if (state.pendingEffect?.type === 'seven-penalty') {
     if (state.pendingEffect.drawn > state.pendingEffect.penalty) {
       return 'Already drew the maximum cards for this penalty';
     }
+    return null;
+  }
+  // During ace-chain: always allow draw (break chain)
+  if (state.pendingEffect?.type === 'ace-chain') {
     return null;
   }
   // Normal turn: only one draw allowed

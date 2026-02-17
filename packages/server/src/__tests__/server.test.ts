@@ -287,11 +287,11 @@ describe('RoomManager unit tests', () => {
     const room = rm.createRoom('h', 'Host', 'standard');
     rm.joinRoom(room.code, 'p2', 'P2');
     rm.joinRoom(room.code, 'p3', 'P3');
-    const state = rm.startGame(room.code, 3);
-    expect(state).not.toBeNull();
+    const result = rm.startGame(room.code, 3);
+    expect(result).not.toBeNull();
 
-    if (state) {
-      const view = rm.getPlayerView(state, 'h');
+    if (result) {
+      const view = rm.getPlayerView(result.state, 'h');
       expect(view.myHand.length).toBeGreaterThan(0);
       expect(view.opponents).toHaveLength(2);
       // Opponents should not leak hand cards

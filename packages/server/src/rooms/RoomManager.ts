@@ -1,9 +1,9 @@
 import type {
-  GameState, GameMode, PlayerView, OpponentView,
+  GameState, GameMode, PlayerView, OpponentView, Card,
   TournamentSession, TournamentView, PlayerScore, RoundResult,
 } from '@hafte-kasif/shared';
 import { createInitialState } from '../engine/game.js';
-import { createEmptyPlayerScore, applyPoints } from '@hafte-kasif/shared';
+import { createEmptyPlayerScore, applyPoints, shuffleDeck } from '@hafte-kasif/shared';
 
 interface RoomPlayer {
   id: string;
@@ -79,7 +79,7 @@ export class RoomManager {
     return fallback;
   }
 
-  startGame(code: string, cardsPerPlayer: number): GameState | null {
+  startGame(code: string, cardsPerPlayer: number): { state: GameState; deck: Card[] } | null {
     const room = this.rooms.get(code);
     if (!room) return null;
     if (room.players.length < 3) return null;
@@ -98,16 +98,25 @@ export class RoomManager {
     const dealerIdx = roundNum % room.players.length;
     const dealerId = room.players[dealerIdx].id;
 
+    // Capture the shuffled deck for debug logging
+    let initialDeck: Card[] = [];
+    const captureShuffle = (deck: Card[]) => {
+      const shuffled = shuffleDeck(deck);
+      initialDeck = [...shuffled];
+      return shuffled;
+    };
+
     const state = createInitialState(
       room.players.map(p => ({ id: p.id, name: p.name })),
       dealerId,
       cardsPerPlayer,
       room.mode,
+      captureShuffle,
     );
 
     room.gameState = state;
     room.lastActivityAt = Date.now();
-    return state;
+    return { state, deck: initialDeck };
   }
 
   /**

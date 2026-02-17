@@ -1,7 +1,8 @@
 import { BotClient } from './bot-client.js';
 import { createBotCredentials, type BotCredentials } from './bot-auth.js';
 import { decideAction } from './bot-brain.js';
-import type { PlayerView, ServerMessage, Card } from '@hafte-kasif/shared';
+import { GameLogger } from './game-logger.js';
+import type { PlayerView, ServerMessage, Card, Action } from '@hafte-kasif/shared';
 
 function cardKey(c: Card): string {
   return `${c.value}:${c.suit}`;
@@ -19,6 +20,7 @@ interface BotInstance {
 export class BotRunner {
   private bots: BotInstance[] = [];
   private serverUrl: string;
+  private logger: GameLogger | null = null;
 
   constructor(serverUrl: string = 'ws://localhost:3000/ws') {
     this.serverUrl = serverUrl;
@@ -26,6 +28,7 @@ export class BotRunner {
 
   async start(roomCode: string, botCount?: number): Promise<void> {
     console.log('Creating bot credentials...');
+    this.logger = new GameLogger(roomCode);
     const credentials = await createBotCredentials(botCount);
 
     for (const cred of credentials) {
@@ -62,11 +65,24 @@ export class BotRunner {
   private setupGameLoop(bot: BotInstance): void {
     let lastCurrentPlayer = '';
     let lastAttemptedCard: Card | null = null;
+    let lastAttemptedAction: Action | null = null;
     let lastView: PlayerView | null = null;
+    const logger = this.logger;
 
     bot.client.onMessage((msg: ServerMessage) => {
+      if (msg.type === 'DEBUG_GAME_INIT') {
+        logger?.logInit(msg.deck, msg.dealerId, msg.cardsPerPlayer, msg.mode, msg.players);
+        return;
+      }
+
       if (msg.type === 'GAME_STATE') {
         const view: PlayerView = msg.state;
+
+        // Log every game state and events received
+        logger?.logGameState(bot.credentials.displayName, bot.playerId, view);
+        if (msg.events) {
+          logger?.logEvents(bot.credentials.displayName, msg.events);
+        }
 
         // Reset draw tracking when turn changes (but not during seven-penalty)
         if (view.currentPlayerId !== lastCurrentPlayer) {
@@ -92,9 +108,11 @@ export class BotRunner {
           if (view.myHand.length === 1 && !bot.hasAnnounced) {
             console.log(`[${bot.credentials.displayName}] Announcing one card!`);
             bot.hasAnnounced = true;
+            const action = { type: 'ANNOUNCE_ONE_CARD' as const };
+            logger?.logAction(bot.credentials.displayName, bot.playerId, action);
             bot.client.send({
               type: 'PLAYER_ACTION',
-              action: { type: 'ANNOUNCE_ONE_CARD' },
+              action,
             });
             return;
           }
@@ -108,6 +126,7 @@ export class BotRunner {
           if (action.type === 'PLAY_CARD') {
             lastAttemptedCard = action.card;
           }
+          lastAttemptedAction = action;
 
           console.log(
             `[${bot.credentials.displayName}] Action: ${action.type}`,
@@ -116,12 +135,15 @@ export class BotRunner {
               : '',
           );
 
+          logger?.logAction(bot.credentials.displayName, bot.playerId, action);
           bot.client.send({ type: 'PLAYER_ACTION', action });
         }, delay);
       }
 
       if (msg.type === 'MOVE_REJECTED') {
         console.error(`[${bot.credentials.displayName}] Move rejected: ${msg.reason}`);
+        logger?.logRejected(bot.credentials.displayName, bot.playerId, msg.reason, lastAttemptedAction ?? undefined);
+
         // Only retry if it's still our turn
         if (!lastView || lastView.currentPlayerId !== bot.playerId) return;
 
@@ -134,8 +156,10 @@ export class BotRunner {
           if (retry) {
             if (retry.type === 'DRAW_CARD') bot.hasDrawnThisTurn = true;
             if (retry.type === 'PLAY_CARD') lastAttemptedCard = retry.card;
+            lastAttemptedAction = retry;
             console.log(`[${bot.credentials.displayName}] Retry: ${retry.type}`,
               retry.type === 'PLAY_CARD' ? `${retry.card.value} of ${retry.card.suit}` : '');
+            logger?.logAction(bot.credentials.displayName, bot.playerId, retry);
             bot.client.send({ type: 'PLAYER_ACTION', action: retry });
           }
         }
@@ -145,6 +169,10 @@ export class BotRunner {
         console.log(
           `[${bot.credentials.displayName}] Game over! Winner: ${msg.winnerId}, Points: ${msg.points}`,
         );
+        logger?.logGameOver(msg);
+        if (logger) {
+          console.log(`Game log: ${logger.filePath}`);
+        }
       }
     });
   }
@@ -167,6 +195,7 @@ export class BotRunner {
 
     const created = await firstClient.waitFor('ROOM_CREATED');
     const roomCode = created.roomCode;
+    this.logger = new GameLogger(roomCode);
     console.log(`[${firstCred.displayName}] Created room ${roomCode}`);
 
     const firstBot: BotInstance = {

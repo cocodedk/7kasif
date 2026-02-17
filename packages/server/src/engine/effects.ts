@@ -17,6 +17,7 @@ function cloneState(state: GameState): GameState {
     deck: [...state.deck],
     discardPile: [...state.discardPile],
     pendingEffect: state.pendingEffect ? { ...state.pendingEffect } : null,
+    pendingWinner: state.pendingWinner ? { ...state.pendingWinner } : null,
     losers: [...state.losers],
   };
 }
@@ -199,6 +200,12 @@ function applyPlayCard(state: GameState, playerId: string, action: PlayCardActio
   // During seven-penalty (drawn >= penalty): clear effect, play as normal
   if (state.pendingEffect?.type === 'seven-penalty') {
     state.pendingEffect = null;
+    // Resolve deferred winner now that the chain is fully resolved
+    if (state.pendingWinner) {
+      events.push(...calculateGameEnd(state, state.pendingWinner.playerId, state.pendingWinner.card));
+      state.pendingWinner = null;
+      return events;
+    }
   }
 
   // Handle Ace chain continuation
@@ -246,8 +253,13 @@ function applyCardEffect(
 
   // Check win before effects
   if (player.hand.length === 0 && card.value !== 'ace') {
-    events.push(...calculateGameEnd(state, playerId, card));
-    return events;
+    // Defer win if this card starts or continues a seven-chain
+    if (card.value === 7) {
+      state.pendingWinner = { playerId, card };
+    } else {
+      events.push(...calculateGameEnd(state, playerId, card));
+      return events;
+    }
   }
 
   switch (card.value) {
@@ -386,16 +398,25 @@ function applyChainCounter(
 ): GameEvent[] {
   const chain = state.pendingEffect as { type: 'seven-chain'; penalty: number; suit: string };
   const { card } = action;
+  const player = state.players[getPlayerIndex(state, playerId)];
 
   if (card.value === 7) {
     // Add 2 to penalty, update chain suit to this 7's suit, pass to next
     chain.penalty += 2;
     chain.suit = card.suit;
+    // Defer win if hand is now empty
+    if (player.hand.length === 0) {
+      state.pendingWinner = { playerId, card };
+    }
     advanceTurn(state);
     return events;
   }
 
   if (card.value === 8) {
+    // Defer win if hand is now empty
+    if (player.hand.length === 0) {
+      state.pendingWinner = { playerId, card };
+    }
     if (action.chainChoice === 'redirect') {
       // Redirect penalty to player 2 positions ahead — they draw incrementally
       const playerIdx = getPlayerIndex(state, playerId);
@@ -422,6 +443,10 @@ function applyChainCounter(
     // Reverse direction, penalty stays
     state.direction = (state.direction * -1) as Direction;
     events.push({ type: 'DIRECTION_REVERSED', newDirection: state.direction });
+    // Defer win if hand is now empty
+    if (player.hand.length === 0) {
+      state.pendingWinner = { playerId, card };
+    }
     advanceTurn(state);
     return events;
   }
@@ -446,6 +471,10 @@ function applyDrawCard(state: GameState, playerId: string): GameEvent[] {
       drawn: 1,
       suit: state.pendingEffect.suit,
     };
+    // Clear pendingWinner if the drawing player is the pending winner (chain wrapped back)
+    if (state.pendingWinner?.playerId === playerId) {
+      state.pendingWinner = null;
+    }
     // Stay on current player — they must keep drawing
     return events;
   }
@@ -454,6 +483,10 @@ function applyDrawCard(state: GameState, playerId: string): GameEvent[] {
     const pen = state.pendingEffect;
     events.push(...drawCards(state, playerIdx, 1));
     pen.drawn++;
+    // Clear pendingWinner if the drawing player is the pending winner (chain wrapped back)
+    if (state.pendingWinner?.playerId === playerId) {
+      state.pendingWinner = null;
+    }
     if (pen.drawn > pen.penalty) {
       // Took the optional extra draw — stay on player so they can play or pass
       state.pendingEffect = null;
@@ -487,6 +520,13 @@ function applyPassTurn(state: GameState, playerId: string): GameEvent[] {
   }
   events.push({ type: 'TURN_PASSED', playerId });
   advanceTurn(state);
+
+  // Resolve deferred winner now that the chain is fully resolved
+  if (state.pendingWinner && !state.pendingEffect) {
+    events.push(...calculateGameEnd(state, state.pendingWinner.playerId, state.pendingWinner.card));
+    state.pendingWinner = null;
+  }
+
   return events;
 }
 

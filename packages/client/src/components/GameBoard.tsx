@@ -318,25 +318,15 @@ export function GameBoard({ game, playerId, error, send, lastEvents = [] }: Game
   return (
     <div className="h-full flex flex-col">
       {/* Opponents */}
-      <div className="flex-none p-2 space-y-1">
+      <div className="flex-none p-2 flex gap-2 justify-center">
         {game.opponents.map(opp => (
-          <div key={opp.id} className="flex items-center gap-2">
-            <div className="flex-1">
-              <OpponentHand
-                opponent={opp}
-                isCurrentTurn={game.currentPlayerId === opp.id}
-                isNext={nextPlayerId === opp.id}
-              />
-            </div>
-            {opp.cardCount === 1 && !opp.hasAnnouncedOneCard && (
-              <button
-                onClick={() => handleChallenge(opp.id)}
-                className="text-[10px] bg-red-600 px-2 py-1 rounded active:bg-red-700"
-              >
-                Challenge!
-              </button>
-            )}
-          </div>
+          <OpponentHand
+            key={opp.id}
+            opponent={opp}
+            isCurrentTurn={game.currentPlayerId === opp.id}
+            isNext={nextPlayerId === opp.id}
+            onChallenge={() => handleChallenge(opp.id)}
+          />
         ))}
       </div>
 

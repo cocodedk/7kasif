@@ -6,11 +6,17 @@ interface HomeScreenProps {
   connected: boolean;
 }
 
+function getRoomCodeFromHash(): string {
+  const hash = window.location.hash.replace('#', '').toUpperCase();
+  return /^[A-Z]{4}$/.test(hash) ? hash : '';
+}
+
 export function HomeScreen({ send, connected }: HomeScreenProps) {
+  const hashCode = getRoomCodeFromHash();
   const [name, setName] = useState('');
-  const [joinCode, setJoinCode] = useState('');
+  const [joinCode, setJoinCode] = useState(hashCode);
   const [mode, setMode] = useState<GameMode>('standard');
-  const [view, setView] = useState<'main' | 'join'>('main');
+  const [view, setView] = useState<'main' | 'join'>(hashCode ? 'join' : 'main');
 
   const handleCreate = () => {
     if (!name.trim()) return;

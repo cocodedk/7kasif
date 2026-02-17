@@ -55,6 +55,7 @@ export function createInitialState(
     winner: null,
     losers: [],
     finishingCard: null,
+    pendingWinner: null,
   };
 
   // Apply first card effects (dealer is treated as the player who played it)
