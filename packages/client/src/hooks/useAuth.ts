@@ -4,6 +4,7 @@ interface AuthUser {
   id: number;
   email: string;
   displayName: string;
+  role: 'admin' | 'player';
 }
 
 interface AuthState {

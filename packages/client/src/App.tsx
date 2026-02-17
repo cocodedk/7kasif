@@ -8,6 +8,7 @@ import { WaitingRoom } from './screens/WaitingRoom.js';
 import { GameOverScreen } from './screens/GameOverScreen.js';
 import { SessionEndedScreen } from './screens/SessionEndedScreen.js';
 import { GameBoard } from './components/GameBoard.js';
+import { AdminScreen } from './screens/AdminScreen.js';
 import { DevPreview } from './DevPreview.js';
 
 const DEV_PREVIEW = import.meta.env.VITE_DEV_PREVIEW === 'true';
@@ -65,6 +66,7 @@ function GameApp() {
     <AuthenticatedGame
       token={token}
       displayName={user?.displayName}
+      isAdmin={user?.role === 'admin'}
       onLogout={logout}
     />
   );
@@ -73,14 +75,17 @@ function GameApp() {
 function AuthenticatedGame({
   token,
   displayName,
+  isAdmin,
   onLogout,
 }: {
   token: string | null;
   displayName?: string;
+  isAdmin?: boolean;
   onLogout: () => void;
 }) {
   const { send: rawSend, connected, onMessage } = useWebSocket();
   const { state, dispatch } = useGameState(onMessage);
+  const [showAdmin, setShowAdmin] = useState(false);
 
   // Wrap send to inject token into CREATE_ROOM and JOIN_ROOM messages
   const send = (msg: Parameters<typeof rawSend>[0]) => {
@@ -148,10 +153,23 @@ function AuthenticatedGame({
     );
   }
 
+  // Admin screen
+  if (showAdmin && token) {
+    return <AdminScreen token={token} onBack={() => setShowAdmin(false)} />;
+  }
+
   // Home
   return (
     <div className="relative h-full">
       <div className="absolute top-4 right-4 flex items-center gap-3">
+        {isAdmin && (
+          <button
+            onClick={() => setShowAdmin(true)}
+            className="text-xs text-gray-500 hover:text-gray-300"
+          >
+            Admin
+          </button>
+        )}
         <span className="text-sm text-gray-300">{displayName}</span>
         <button
           onClick={onLogout}
