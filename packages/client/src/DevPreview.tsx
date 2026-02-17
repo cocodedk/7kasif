@@ -124,8 +124,8 @@ export function DevPreview() {
         playerId="dev-player"
         error={error}
         send={send}
-        canPass={hasDrawn}
-        hasDrawn={hasDrawn}
+
+
       />
       <button
         onClick={() => { setGame(INITIAL_GAME); setHasDrawn(false); setError(null); }}

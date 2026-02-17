@@ -193,6 +193,11 @@ export function validateDrawCard(state: GameState, playerId: string): string | n
     if (state.pendingEffect.drawn > state.pendingEffect.penalty) {
       return 'Already drew the maximum cards for this penalty';
     }
+    return null;
+  }
+  // Normal turn: only one draw allowed
+  if (state.hasDrawnThisTurn) {
+    return 'Already drew a card this turn';
   }
   return null;
 }
@@ -222,6 +227,12 @@ export function validatePassTurn(state: GameState, playerId: string): string | n
     if (state.pendingEffect.drawn < state.pendingEffect.penalty) {
       return 'Must keep drawing — penalty not yet fulfilled';
     }
+    return null;
+  }
+
+  // Normal turn: must draw or play before passing
+  if (!state.hasDrawnThisTurn) {
+    return 'You must draw or play a card before passing';
   }
 
   return null;

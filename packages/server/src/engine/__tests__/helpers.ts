@@ -89,6 +89,7 @@ export function createTestState(options: {
     cardsPerPlayer: Math.max(...hands.map(h => h.length)),
     mode,
     lastAction: null,
+    hasDrawnThisTurn: false,
     winner: null,
     losers: [],
     finishingCard: null,

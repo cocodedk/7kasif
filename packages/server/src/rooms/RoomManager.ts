@@ -246,6 +246,7 @@ export class RoomManager {
       deckCount: state.deck.length,
       pendingEffect: state.pendingEffect,
       declaredSuit,
+      hasDrawnThisTurn: state.hasDrawnThisTurn,
       mode: state.mode,
     };
   }

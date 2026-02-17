@@ -28,8 +28,6 @@ interface GameBoardProps {
   playerId: string;
   error: string | null;
   send: (msg: ClientMessage) => void;
-  canPass?: boolean;
-  hasDrawn?: boolean;
   lastEvents?: GameEvent[];
 }
 
@@ -56,7 +54,7 @@ function formatCard(card: CardType): string {
   return `${VALUE_NAMES[String(card.value)]}${SUIT_CHARS[card.suit]}`;
 }
 
-export function GameBoard({ game, playerId, error, send, canPass, hasDrawn, lastEvents = [] }: GameBoardProps) {
+export function GameBoard({ game, playerId, error, send, lastEvents = [] }: GameBoardProps) {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [showCardPicker, setShowCardPicker] = useState(false);
   const [showSuitPicker, setShowSuitPicker] = useState(false);
@@ -169,8 +167,10 @@ export function GameBoard({ game, playerId, error, send, canPass, hasDrawn, last
         case 'CARD_GIVEN':
           newEntries.push({
             seq, id: ++feedIdCounter,
-            text: `${playerName(ev.fromPlayerId)} gave ${formatCard(ev.card)} to ${playerName(ev.toPlayerId)}`,
-            card: ev.card,
+            text: ev.card
+              ? `${playerName(ev.fromPlayerId)} gave ${formatCard(ev.card)} to ${playerName(ev.toPlayerId)}`
+              : `${playerName(ev.fromPlayerId)} gave a card to ${playerName(ev.toPlayerId)}`,
+            card: ev.card ?? undefined,
             color: 'text-yellow-300',
           });
           break;
@@ -193,6 +193,13 @@ export function GameBoard({ game, playerId, error, send, canPass, hasDrawn, last
             seq, id: ++feedIdCounter,
             text: `${playerName(ev.targetPlayerId)} takes ${ev.penalty} card penalty`,
             color: 'text-orange-400',
+          });
+          break;
+        case 'DECK_RESHUFFLED':
+          newEntries.push({
+            seq, id: ++feedIdCounter,
+            text: 'Deck reshuffled from discard pile',
+            color: 'text-amber-400',
           });
           break;
         case 'HOUSE_CHANGED':
@@ -420,6 +427,16 @@ export function GameBoard({ game, playerId, error, send, canPass, hasDrawn, last
         )}
       </div>
 
+      {/* Revealed cards (between pile and hand) */}
+      {game.myRevealedCards && game.myRevealedCards.length > 0 && (
+        <div className="flex-none flex items-center justify-center gap-1 px-4 py-1">
+          <span className="text-[10px] text-blue-400 mr-1">Revealed:</span>
+          {game.myRevealedCards.map((card, i) => (
+            <Card key={`${card.value}-${card.suit}`} card={card} small revealed />
+          ))}
+        </div>
+      )}
+
       {/* My Hand */}
       <div className="flex-none pb-safe">
         <div onClick={game.myHand.length > 10 && isMyTurn ? () => setShowCardPicker(true) : undefined}>
@@ -445,8 +462,8 @@ export function GameBoard({ game, playerId, error, send, canPass, hasDrawn, last
           {!isQueenReveal && (
             <button
               onClick={handleDraw}
-              disabled={!isMyTurn || (game.pendingEffect?.type === 'seven-penalty' ? game.pendingEffect.drawn > game.pendingEffect.penalty : hasDrawn === true)}
-              className="flex-1 bg-blue-600 disabled:bg-gray-700 disabled:text-gray-500 text-white font-bold py-2.5 rounded-lg active:bg-blue-700 transition-colors"
+              disabled={!isMyTurn || (game.pendingEffect?.type === 'seven-penalty' ? game.pendingEffect.drawn > game.pendingEffect.penalty : game.hasDrawnThisTurn)}
+              className={`flex-1 ${game.hasDrawnThisTurn && !game.pendingEffect ? 'bg-gray-500' : 'bg-blue-600 active:bg-blue-700'} disabled:bg-gray-700 disabled:text-gray-500 text-white font-bold py-2.5 rounded-lg transition-colors`}
             >
               Draw
             </button>
@@ -454,8 +471,8 @@ export function GameBoard({ game, playerId, error, send, canPass, hasDrawn, last
           {!isQueenReveal && (
             <button
               onClick={handlePass}
-              disabled={!isMyTurn || canPass === false || (game.pendingEffect?.type === 'seven-penalty' && game.pendingEffect.drawn < game.pendingEffect.penalty)}
-              className="flex-1 bg-gray-600 disabled:bg-gray-700 disabled:text-gray-500 text-white font-bold py-2.5 rounded-lg active:bg-gray-700 transition-colors"
+              disabled={!isMyTurn || (!game.hasDrawnThisTurn && !game.pendingEffect) || (game.pendingEffect?.type === 'seven-chain') || (game.pendingEffect?.type === 'ace-chain') || (game.pendingEffect?.type === 'seven-penalty' && game.pendingEffect.drawn < game.pendingEffect.penalty)}
+              className={`flex-1 ${game.hasDrawnThisTurn ? 'bg-orange-600 active:bg-orange-700' : 'bg-gray-600 active:bg-gray-700'} disabled:bg-gray-700 disabled:text-gray-500 text-white font-bold py-2.5 rounded-lg transition-colors`}
             >
               Pass
             </button>
@@ -505,7 +522,7 @@ export function GameBoard({ game, playerId, error, send, canPass, hasDrawn, last
 
       {/* Played card reveal */}
       {playedCard && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[60] pointer-events-none">
+        <div className="fixed inset-0 flex items-center justify-center z-[60] pointer-events-none">
           <div className="animate-play-reveal flex flex-col items-center gap-3">
             <div className="text-white font-bold text-lg drop-shadow-lg">
               {playedCard.playerName} played
@@ -528,7 +545,7 @@ export function GameBoard({ game, playerId, error, send, canPass, hasDrawn, last
 
       {/* Drawn card reveal */}
       {revealCard && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[60] pointer-events-none">
+        <div className="fixed inset-0 flex items-center justify-center z-[60] pointer-events-none">
           <div className="animate-draw-reveal">
             <div className="w-28 h-40 bg-white rounded-xl border-4 border-yellow-400 shadow-2xl shadow-yellow-400/30 flex flex-col justify-between p-2">
               <div className={`flex flex-col items-start leading-none ${revealCard.suit === 'hearts' || revealCard.suit === 'diamonds' ? 'text-red-500' : 'text-black'}`}>

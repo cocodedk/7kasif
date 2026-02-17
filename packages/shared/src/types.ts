@@ -67,6 +67,7 @@ export interface GameState {
   cardsPerPlayer: number; // 2-7, set at start
   mode: GameMode;
   lastAction: Action | null;
+  hasDrawnThisTurn: boolean;
   winner: string | null; // playerId
   losers: string[]; // playerIds (can be multiple on tie reversal)
   finishingCard: Card | null;
@@ -132,7 +133,7 @@ export interface CardGivenEvent {
   type: 'CARD_GIVEN';
   fromPlayerId: string;
   toPlayerId: string;
-  card: Card;
+  card: Card | null;
 }
 
 export interface TurnPassedEvent {
@@ -165,6 +166,10 @@ export interface ChainReactionEvent {
   type: 'CHAIN_REACTION';
   penalty: number;
   targetPlayerId: string;
+}
+
+export interface DeckReshuffledEvent {
+  type: 'DECK_RESHUFFLED';
 }
 
 export interface OneCardAnnouncedEvent {
@@ -206,6 +211,7 @@ export type GameEvent =
   | CardRevealedEvent
   | HouseChangedEvent
   | ChainReactionEvent
+  | DeckReshuffledEvent
   | OneCardAnnouncedEvent
   | AnnouncementChallengedEvent
   | GameOverEvent;
@@ -385,5 +391,6 @@ export interface PlayerView {
   deckCount: number;
   pendingEffect: PendingEffect | null;
   declaredSuit: Suit | null; // if Jack changed the house
+  hasDrawnThisTurn: boolean;
   mode: GameMode;
 }

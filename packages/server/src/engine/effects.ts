@@ -46,7 +46,9 @@ function drawCards(state: GameState, playerIndex: number, count: number): GameEv
   const player = state.players[playerIndex];
   for (let i = 0; i < count; i++) {
     if (state.deck.length === 0) {
-      reshuffleDeck(state);
+      if (reshuffleDeck(state)) {
+        events.push({ type: 'DECK_RESHUFFLED' });
+      }
     }
     if (state.deck.length === 0) break; // truly empty
     const card = state.deck.pop()!;
@@ -60,8 +62,8 @@ function drawCards(state: GameState, playerIndex: number, count: number): GameEv
   return events;
 }
 
-function reshuffleDeck(state: GameState): void {
-  if (state.discardPile.length <= 1) return;
+function reshuffleDeck(state: GameState): boolean {
+  if (state.discardPile.length <= 1) return false;
   const topCard = state.discardPile.pop()!;
   const cards = state.discardPile.splice(0);
   // Shuffle
@@ -71,12 +73,15 @@ function reshuffleDeck(state: GameState): void {
   }
   state.deck.push(...cards);
   state.discardPile = [topCard];
+  return true;
 }
 
 function advanceTurn(state: GameState, steps: number = 1): void {
   state.currentPlayerIndex = nextPlayerIndex(state, state.currentPlayerIndex, steps);
   // Clear lockedCards for the player whose turn it now is
   state.players[state.currentPlayerIndex].lockedCards = [];
+  // Reset draw flag for the new turn
+  state.hasDrawnThisTurn = false;
 }
 
 // ─── Win/Lose Calculation ───
@@ -461,11 +466,13 @@ function applyDrawCard(state: GameState, playerId: string): GameEvent[] {
     // Draw during Ace chain — stay on player so they can play or pass
     events.push(...drawCards(state, playerIdx, 1));
     state.pendingEffect = null;
+    state.hasDrawnThisTurn = true;
     return events;
   }
 
   // Normal draw
   events.push(...drawCards(state, playerIdx, 1));
+  state.hasDrawnThisTurn = true;
   // Turn does NOT end — player can still play or pass
   return events;
 }

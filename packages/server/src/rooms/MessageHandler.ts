@@ -4,6 +4,7 @@ import { FINISH_POINTS } from '@hafte-kasif/shared';
 import { ConnectionManager } from './ConnectionManager.js';
 import { RoomManager } from './RoomManager.js';
 import { applyAction } from '../engine/game.js';
+import { filterEventsForPlayer } from '../engine/view.js';
 import { verifyToken } from '../auth/auth.js';
 
 export class MessageHandler {
@@ -150,6 +151,7 @@ export class MessageHandler {
       return;
     }
 
+    const stateBefore = room.gameState;
     const result = applyAction(room.gameState, playerId, action);
 
     if (!result.ok) {
@@ -163,7 +165,7 @@ export class MessageHandler {
     room.gameState = result.newState;
     room.lastActivityAt = Date.now();
 
-    this.broadcastGameState(room.code, result.events);
+    this.broadcastGameState(room.code, result.events, stateBefore);
 
     // Check for game over — record round result in tournament
     const gameOverEvent = result.events.find(e => e.type === 'GAME_OVER');
@@ -243,16 +245,19 @@ export class MessageHandler {
     }
   }
 
-  private broadcastGameState(roomCode: string, events?: import('@hafte-kasif/shared').GameEvent[]): void {
+  private broadcastGameState(roomCode: string, events?: import('@hafte-kasif/shared').GameEvent[], stateBefore?: import('@hafte-kasif/shared').GameState): void {
     const room = this.rooms.getRoom(roomCode);
     if (!room || !room.gameState) return;
 
     for (const p of room.players) {
       const view = this.rooms.getPlayerView(room.gameState, p.id);
+      const playerEvents = events && events.length > 0 && stateBefore
+        ? filterEventsForPlayer(events, p.id, stateBefore)
+        : events;
       this.connections.send(p.id, {
         type: 'GAME_STATE',
         state: view,
-        ...(events && events.length > 0 ? { events } : {}),
+        ...(playerEvents && playerEvents.length > 0 ? { events: playerEvents } : {}),
       } satisfies ServerMessage);
     }
   }

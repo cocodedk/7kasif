@@ -51,6 +51,7 @@ export function createInitialState(
     cardsPerPlayer,
     mode,
     lastAction: null,
+    hasDrawnThisTurn: false,
     winner: null,
     losers: [],
     finishingCard: null,
