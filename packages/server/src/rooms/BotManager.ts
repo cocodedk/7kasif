@@ -145,17 +145,42 @@ export class BotManager {
 
     // Decide and play
     const action = decideAction(view, botId, view.hasDrawnThisTurn, botState.rejectedCards);
-    if (!action) return;
+    if (!action) {
+      // Bot brain couldn't decide — force a pass or draw to avoid stalling
+      const fallback: Action = view.hasDrawnThisTurn
+        ? { type: 'PASS_TURN' }
+        : { type: 'DRAW_CARD' };
+      const fbStateBefore = room.gameState!;
+      const fbResult = applyAction(fbStateBefore, botId, fallback);
+      if (fbResult.ok) {
+        room.gameState = fbResult.newState;
+        room.lastActivityAt = Date.now();
+        broadcastGameState(room.code, fbResult.events, fbStateBefore);
+        this.scheduleBotTurn(room, getPlayerView, broadcastGameState, broadcastGameOver);
+      }
+      return;
+    }
 
     const stateBefore = room.gameState;
     const result = applyAction(room.gameState, botId, action);
 
     if (!result.ok) {
-      // Track rejected card and retry
+      // Track rejected action and retry
       if (action.type === 'PLAY_CARD') {
         botState.rejectedCards.add(cardKey(action.card));
+      } else {
+        // Non-card rejection (e.g. DRAW_CARD, PASS_TURN) — fall back to avoid infinite retry
+        const fallback: Action = action.type === 'DRAW_CARD'
+          ? { type: 'PASS_TURN' }
+          : { type: 'DRAW_CARD' };
+        const fbStateBefore = room.gameState!;
+        const fbResult = applyAction(fbStateBefore, botId, fallback);
+        if (fbResult.ok) {
+          room.gameState = fbResult.newState;
+          room.lastActivityAt = Date.now();
+          broadcastGameState(room.code, fbResult.events, fbStateBefore);
+        }
       }
-      // Retry immediately
       this.scheduleBotTurn(room, getPlayerView, broadcastGameState, broadcastGameOver);
       return;
     }

@@ -1,4 +1,4 @@
-import type { GameState, Card, PlayCardAction, GameEvent, Direction } from '@hafte-kasif/shared';
+import type { GameState, Card, Suit, PlayCardAction, GameEvent, Direction } from '@hafte-kasif/shared';
 import { cardEquals } from '@hafte-kasif/shared';
 import { getPlayerIndex, nextPlayerIndex, removeCardFromHand, drawCards, advanceTurn } from './state-helpers.js';
 import { calculateGameEnd } from './game-end.js';
@@ -226,7 +226,7 @@ export function applyChainCounter(
   action: PlayCardAction,
   events: GameEvent[],
 ): GameEvent[] {
-  const chain = state.pendingEffect as { type: 'seven-chain'; penalty: number; suit: string };
+  const chain = state.pendingEffect as { type: 'seven-chain'; penalty: number; suit: Suit };
   const { card } = action;
   const player = state.players[getPlayerIndex(state, playerId)];
 

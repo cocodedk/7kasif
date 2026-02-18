@@ -141,10 +141,17 @@ setInterval(() => {
   botManager.cleanup(rooms.getRoomCodes());
 }, 5 * 60 * 1000);
 
-server.listen(PORT, async () => {
-  console.log(`Hafte Kasif server running on port ${PORT}`);
+async function start() {
   await ensureSchema();
   await seedAdmin();
+  server.listen(PORT, () => {
+    console.log(`Hafte Kasif server running on port ${PORT}`);
+  });
+}
+
+start().catch(err => {
+  console.error('Failed to start server:', err);
+  process.exit(1);
 });
 
 export { server, wss };

@@ -90,7 +90,7 @@ describe('Seven — 7 + 8 add + 7', () => {
         [c('4s'), c('5s')],
         [c('7h'), c('9c')],
         [c('8h'), c('Ks')],
-        [c('7c'), c('6d')],
+        [c('7h'), c('6d')],
       ],
       firstCard: c('4h'),
     });
@@ -109,8 +109,8 @@ describe('Seven — 7 + 8 add + 7', () => {
     expect(r2.ok).toBe(true);
     if (!r2.ok) return;
 
-    log('p4 plays 7♣ to continue chain (penalty 5→7)');
-    const r3 = applyAction(r2.newState, 'p4', { type: 'PLAY_CARD', card: c('7c') });
+    log('p4 plays 7♥ to continue chain (penalty 5→7)');
+    const r3 = applyAction(r2.newState, 'p4', { type: 'PLAY_CARD', card: c('7h') });
     expect(r3.ok).toBe(true);
     if (!r3.ok) return;
 

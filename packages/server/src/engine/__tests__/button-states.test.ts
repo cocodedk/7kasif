@@ -83,14 +83,14 @@ describe('Button states — seven-chain', () => {
         [c('4s'), c('7d'), c('Ks')],
         [c('9c'), c('Ks')],
       ],
-      firstCard: c('3h'),
+      firstCard: c('7h'),
       currentPlayerIndex: 0,
       pendingEffect: { type: 'seven-chain', penalty: 2, suit: 'hearts' },
     });
 
     log('Seven-chain pending — only counter cards playable');
     expect(canPlay(state, 'p1', c('4s'))).toBe(false);   // not a chain card
-    expect(canPlay(state, 'p1', c('7d'))).toBe(true);     // 7 always counters
+    expect(canPlay(state, 'p1', c('7d'))).toBe(true);     // 7 on 7 (value match)
     expect(canDraw(state, 'p1')).toBe(true);               // accept chain
     expect(canPass(state, 'p1')).toBe(false);              // must counter or draw
   });

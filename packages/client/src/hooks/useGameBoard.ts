@@ -197,6 +197,7 @@ export function useGameBoard({ game, playerId, error, send, lastEvents = [] }: G
     showChainChoice,
     setShowChainChoice,
     pendingCard,
+    setPendingCard,
     feed,
     revealCard,
     playedCard,

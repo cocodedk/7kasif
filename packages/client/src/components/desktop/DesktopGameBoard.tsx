@@ -9,9 +9,7 @@ export function DesktopGameBoard(props: GameBoardProps) {
   const { game, playerId, error } = props;
   const gb = useGameBoard(props);
 
-  const setPendingCardNull = () => {
-    // handled via the hook's internal state; we just close the modals
-  };
+  const setPendingCardNull = () => gb.setPendingCard(null);
 
   const gameCenter = (
     <div className="flex-1 flex flex-col items-center justify-center gap-4 min-h-0 overflow-hidden">

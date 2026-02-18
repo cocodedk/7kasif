@@ -23,15 +23,15 @@ export function isCardPlayable(card: Card, view: PlayerView): boolean {
     // After minimum drawn: normal playability rules (fall through below)
   }
 
-  // During a 7-chain: only 7, 8, 10 (with suit restrictions in standard mode)
+  // During a 7-chain: only 7, 8, 10 with normal matching (suit or value) against top discard
   if (view.pendingEffect?.type === 'seven-chain') {
-    if (card.value === 7) return true;
-    if (view.mode === 'freestyle') {
-      return card.value === 8 || card.value === 10;
-    }
-    // Standard mode: 8 and 10 must match the chain suit
-    if (card.value === 8 && card.suit === view.pendingEffect.suit) return true;
-    if (card.value === 10 && card.suit === view.pendingEffect.suit) return true;
+    if (card.value !== 7 && card.value !== 8 && card.value !== 10) return false;
+    if (view.mode === 'freestyle') return true;
+    // Standard: match top discard by suit or value
+    const top = view.topDiscard;
+    if (!top) return true;
+    if (card.suit === top.suit) return true;
+    if (card.value === top.value) return true;
     return false;
   }
 

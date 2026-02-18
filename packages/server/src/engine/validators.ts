@@ -55,17 +55,17 @@ export function cardMatchesHouse(card: Card, state: GameState): boolean {
   return false;
 }
 
-export function canPlayInChain(card: Card, chain: PendingChain, mode: GameState['mode']): boolean {
-  // In a 7-chain, only 7, 8, and 10 can be played
-  if (card.value === 7) return true;
+export function canPlayInChain(card: Card, _chain: PendingChain, mode: GameState['mode'], topDiscard: Card | null): boolean {
+  // Only 7, 8, and 10 can be played in a chain
+  if (card.value !== 7 && card.value !== 8 && card.value !== 10) return false;
 
-  if (mode === 'freestyle') {
-    return card.value === 8 || card.value === 10;
-  }
+  // Freestyle: any 7, 8, or 10
+  if (mode === 'freestyle') return true;
 
-  // Standard mode: 8 and 10 must match the chain suit
-  if (card.value === 8 && card.suit === chain.suit) return true;
-  if (card.value === 10 && card.suit === chain.suit) return true;
+  // Standard: normal matching rules (suit or value) against top discard
+  if (!topDiscard) return true;
+  if (card.suit === topDiscard.suit) return true;
+  if (card.value === topDiscard.value) return true;
 
   return false;
 }
@@ -135,7 +135,7 @@ export function validatePlayCard(
 
   // During a 7-8-10 chain reaction
   if (state.pendingEffect?.type === 'seven-chain') {
-    if (!canPlayInChain(card, state.pendingEffect, state.mode)) {
+    if (!canPlayInChain(card, state.pendingEffect, state.mode, getTopDiscard(state))) {
       return 'During a chain reaction, you can only play 7, 8 (same suit), or 10 (same suit)';
     }
     if (card.value === 8 && !action.chainChoice) {
