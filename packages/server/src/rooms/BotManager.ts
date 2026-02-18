@@ -1,7 +1,9 @@
-import type { GameState, GameEvent, Action, Card, PlayerView } from '@hafte-kasif/shared';
+import type { GameState, GameEvent, Action, ActionResult, Card, PlayerView } from '@hafte-kasif/shared';
 import { applyAction } from '../engine/game.js';
 import { decideAction } from '../engine/bot-brain.js';
 import type { Room } from './RoomManager.js';
+
+type LogActionFn = (playerId: string, action: Action, stateBefore: GameState, result: ActionResult) => void;
 
 const BOT_NAMES = ['Alice', 'Bob', 'Charlie'];
 const BOT_IDS = ['bot_1', 'bot_2', 'bot_3'];
@@ -77,6 +79,7 @@ export class BotManager {
     getPlayerView: (state: GameState, playerId: string) => PlayerView,
     broadcastGameState: (roomCode: string, events?: GameEvent[], stateBefore?: GameState) => void,
     broadcastGameOver: (room: Room, events: GameEvent[], state: GameState) => void,
+    logAction?: LogActionFn,
   ): void {
     if (!room.gameState) return;
     if (room.gameState.phase !== 'playing') return;
@@ -90,7 +93,7 @@ export class BotManager {
 
     const timer = setTimeout(() => {
       this.activeTimers.delete(room.code);
-      this.executeBotTurn(room, getPlayerView, broadcastGameState, broadcastGameOver);
+      this.executeBotTurn(room, getPlayerView, broadcastGameState, broadcastGameOver, logAction);
     }, this.actionDelayMs);
 
     this.activeTimers.set(room.code, timer);
@@ -101,6 +104,7 @@ export class BotManager {
     getPlayerView: (state: GameState, playerId: string) => PlayerView,
     broadcastGameState: (roomCode: string, events?: GameEvent[], stateBefore?: GameState) => void,
     broadcastGameOver: (room: Room, events: GameEvent[], state: GameState) => void,
+    logAction?: LogActionFn,
   ): void {
     if (!room.gameState || room.gameState.phase !== 'playing') return;
 
@@ -133,12 +137,13 @@ export class BotManager {
       const announceAction: Action = { type: 'ANNOUNCE_ONE_CARD' };
       const stateBefore = room.gameState;
       const result = applyAction(room.gameState, botId, announceAction);
+      logAction?.(botId, announceAction, stateBefore, result);
       if (result.ok) {
         room.gameState = result.newState;
         room.lastActivityAt = Date.now();
         broadcastGameState(room.code, result.events, stateBefore);
         // Continue — the bot still needs to play after announcing
-        this.scheduleBotTurn(room, getPlayerView, broadcastGameState, broadcastGameOver);
+        this.scheduleBotTurn(room, getPlayerView, broadcastGameState, broadcastGameOver, logAction);
         return;
       }
     }
@@ -152,17 +157,20 @@ export class BotManager {
         : { type: 'DRAW_CARD' };
       const fbStateBefore = room.gameState!;
       const fbResult = applyAction(fbStateBefore, botId, fallback);
+      logAction?.(botId, fallback, fbStateBefore, fbResult);
       if (fbResult.ok) {
         room.gameState = fbResult.newState;
         room.lastActivityAt = Date.now();
         broadcastGameState(room.code, fbResult.events, fbStateBefore);
-        this.scheduleBotTurn(room, getPlayerView, broadcastGameState, broadcastGameOver);
+        this.scheduleBotTurn(room, getPlayerView, broadcastGameState, broadcastGameOver, logAction);
       }
       return;
     }
 
     const stateBefore = room.gameState;
     const result = applyAction(room.gameState, botId, action);
+
+    logAction?.(botId, action, stateBefore, result);
 
     if (!result.ok) {
       // Track rejected action and retry
@@ -175,13 +183,14 @@ export class BotManager {
           : { type: 'DRAW_CARD' };
         const fbStateBefore = room.gameState!;
         const fbResult = applyAction(fbStateBefore, botId, fallback);
+        logAction?.(botId, fallback, fbStateBefore, fbResult);
         if (fbResult.ok) {
           room.gameState = fbResult.newState;
           room.lastActivityAt = Date.now();
           broadcastGameState(room.code, fbResult.events, fbStateBefore);
         }
       }
-      this.scheduleBotTurn(room, getPlayerView, broadcastGameState, broadcastGameOver);
+      this.scheduleBotTurn(room, getPlayerView, broadcastGameState, broadcastGameOver, logAction);
       return;
     }
 
@@ -199,7 +208,7 @@ export class BotManager {
     broadcastGameState(room.code, result.events, stateBefore);
 
     // Chain: schedule next bot turn if next player is also a bot
-    this.scheduleBotTurn(room, getPlayerView, broadcastGameState, broadcastGameOver);
+    this.scheduleBotTurn(room, getPlayerView, broadcastGameState, broadcastGameOver, logAction);
   }
 
   /** Reset bot states for a room (call when starting a new round) */

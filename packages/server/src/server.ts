@@ -9,6 +9,7 @@ import { BotManager } from './rooms/BotManager.js';
 import { MessageHandler } from './rooms/MessageHandler.js';
 import { handleApiRoute } from './api/routes.js';
 import { ensureSchema, seedAdmin } from './db/setup.js';
+import { cleanupOldLogs } from './logging/cleanup.js';
 
 const PORT = parseInt(process.env.PORT || '3000', 10);
 const CLIENT_DIR = resolve(process.env.CLIENT_DIR || join(import.meta.dirname, '../../client/dist'));
@@ -134,11 +135,12 @@ wss.on('connection', (ws) => {
   });
 });
 
-// Cleanup stale rooms, connections, and bot state every 5 minutes
+// Cleanup stale rooms, connections, bot state, and old logs every 5 minutes
 setInterval(() => {
   rooms.cleanup();
   connections.cleanup();
   botManager.cleanup(rooms.getRoomCodes());
+  cleanupOldLogs(join(process.cwd(), 'data', 'game-logs'));
 }, 5 * 60 * 1000);
 
 async function start() {

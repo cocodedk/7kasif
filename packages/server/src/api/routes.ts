@@ -1,6 +1,10 @@
 import type { IncomingMessage, ServerResponse } from 'http';
+import { readdirSync, readFileSync, statSync } from 'fs';
+import { join } from 'path';
 import { createUser, sendMagicLink, verifyMagicToken, verifyToken } from '../auth/auth.js';
 import { getLeaderboard, getPlayerStats, getTournamentHistory } from '../db/leaderboard.js';
+
+const GAME_LOGS_DIR = join(process.cwd(), 'data', 'game-logs');
 
 const CORS_ORIGIN = process.env.CORS_ORIGIN || 'https://cocodedk.github.io';
 
@@ -146,6 +150,49 @@ export async function handleApiRoute(
       }
     } catch (err: any) {
       json(res, 500, { error: 'Failed to fetch player stats' });
+    }
+    return true;
+  }
+
+  // GET /api/admin/logs — list game log files
+  if (url === '/api/admin/logs' && method === 'GET') {
+    const admin = getAdminFromHeader(req);
+    if (!admin) {
+      json(res, 403, { error: 'Admin access required' });
+      return true;
+    }
+    try {
+      const files = readdirSync(GAME_LOGS_DIR)
+        .filter(f => f.endsWith('.jsonl'))
+        .map(f => {
+          const stat = statSync(join(GAME_LOGS_DIR, f));
+          const [roomCode] = f.split('#');
+          return { name: f, roomCode, size: stat.size, createdAt: stat.mtimeMs };
+        })
+        .sort((a, b) => b.createdAt - a.createdAt);
+      json(res, 200, files);
+    } catch {
+      json(res, 200, []);
+    }
+    return true;
+  }
+
+  // GET /api/admin/logs/:filename — download a specific log file
+  const logFileMatch = url.match(/^\/api\/admin\/logs\/([A-Za-z0-9_#\-:.]+\.jsonl)$/);
+  if (logFileMatch && method === 'GET') {
+    const admin = getAdminFromHeader(req);
+    if (!admin) {
+      json(res, 403, { error: 'Admin access required' });
+      return true;
+    }
+    const filename = logFileMatch[1];
+    try {
+      const content = readFileSync(join(GAME_LOGS_DIR, filename), 'utf-8');
+      setCorsHeaders(res);
+      res.writeHead(200, { 'Content-Type': 'application/x-ndjson' });
+      res.end(content);
+    } catch {
+      json(res, 404, { error: 'Log file not found' });
     }
     return true;
   }

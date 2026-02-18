@@ -7,8 +7,11 @@ import { BotManager } from './BotManager.js';
 import { applyAction } from '../engine/game.js';
 import { filterEventsForPlayer } from '../engine/view.js';
 import { verifyToken } from '../auth/auth.js';
+import { GameLogger } from '../logging/game-logger.js';
 
 export class MessageHandler {
+  private loggers = new Map<string, GameLogger>();
+
   constructor(
     private connections: ConnectionManager,
     private rooms: RoomManager,
@@ -82,6 +85,18 @@ export class MessageHandler {
   }
 
   private broadcastDebugGameInit(room: Room, result: { deck: any[]; state: GameState }, cardsPerPlayer: number): void {
+    // Server-side game logging
+    const logger = new GameLogger(room.code);
+    this.loggers.set(room.code, logger);
+    logger.logInit(
+      result.state,
+      result.deck,
+      room.players.map(p => ({ id: p.id, name: p.name })),
+      room.mode,
+      cardsPerPlayer,
+      result.state.dealerId,
+    );
+
     if (!process.env.DEBUG_GAME_LOG) return;
     for (const p of room.players) {
       this.connections.send(p.id, {
@@ -98,6 +113,12 @@ export class MessageHandler {
   private processGameOver(room: Room, events: GameEvent[], newState: GameState): void {
     const gameOverEvent = events.find((e): e is GameOverEvent => e.type === 'GAME_OVER');
     if (!gameOverEvent) return;
+
+    const logger = this.loggers.get(room.code);
+    if (logger) {
+      logger.logGameOver(gameOverEvent.winnerId, gameOverEvent.loserId, gameOverEvent.points, gameOverEvent.reversed, newState);
+      this.loggers.delete(room.code);
+    }
 
     const finishingCard = newState.finishingCard;
     const finishingValue = finishingCard ? String(finishingCard.value) : 'unknown';
@@ -222,6 +243,8 @@ export class MessageHandler {
     const stateBefore = room.gameState;
     const result = applyAction(room.gameState, playerId, action);
 
+    this.loggers.get(room.code)?.logAction(playerId, action, stateBefore, result);
+
     if (!result.ok) {
       this.connections.send(playerId, {
         type: 'MOVE_REJECTED',
@@ -325,6 +348,7 @@ export class MessageHandler {
       (state, playerId) => this.rooms.getPlayerView(state, playerId),
       (code, events, stateBefore) => this.broadcastGameState(code, events, stateBefore),
       (r, events, state) => this.processGameOver(r, events, state),
+      (playerId, action, stateBefore, result) => this.loggers.get(roomCode)?.logAction(playerId, action, stateBefore, result),
     );
   }
 
