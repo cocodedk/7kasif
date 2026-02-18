@@ -4,7 +4,7 @@ import { SuitPicker } from './SuitPicker.js';
 import { CardGiver } from './CardGiver.js';
 import { ChainChoicePicker } from './ChainChoicePicker.js';
 import { CardPicker } from './CardPicker.js';
-import { formatValue, SUIT_SYMBOLS } from '../hooks/useGameBoard.js';
+import { formatValue, SUIT_SYMBOLS } from '../utils/cardFormat.js';
 
 interface GameModalsProps {
   game: PlayerView;
@@ -31,6 +31,8 @@ interface GameModalsProps {
   // Overlays
   playedCard: { card: CardType; playerName: string } | null;
   revealCard: CardType | null;
+  // Jack declare
+  isJackDeclare?: boolean;
   // Fullscreen
   fullscreenBtn?: React.ReactNode;
 }
@@ -42,6 +44,7 @@ export function GameModals({
   showCardGiver, setShowCardGiver, handleCardGiven,
   showChainChoice, setShowChainChoice, handleChainChoice,
   playedCard, revealCard,
+  isJackDeclare,
   fullscreenBtn,
 }: GameModalsProps) {
   return (
@@ -60,7 +63,7 @@ export function GameModals({
       {showSuitPicker && (
         <SuitPicker
           onPick={handleSuitPicked}
-          onCancel={() => { setShowSuitPicker(false); setPendingCardNull(); }}
+          onCancel={isJackDeclare ? undefined : () => { setShowSuitPicker(false); setPendingCardNull(); }}
         />
       )}
       {showCardGiver && pendingCard && (

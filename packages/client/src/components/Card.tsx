@@ -1,23 +1,11 @@
 import type { Card as CardType, Suit } from '@hafte-kasif/shared';
-
-const SUIT_SYMBOLS: Record<Suit, string> = {
-  hearts: '\u2665',
-  diamonds: '\u2666',
-  clubs: '\u2663',
-  spades: '\u2660',
-};
+import { SUIT_SYMBOLS, VALUE_DISPLAY } from '../utils/cardFormat.js';
 
 const SUIT_COLORS: Record<Suit, string> = {
   hearts: 'text-red-600',
   diamonds: 'text-red-600',
   clubs: 'text-gray-800',
   spades: 'text-gray-800',
-};
-
-const VALUE_DISPLAY: Record<string, string> = {
-  '2': '2', '3': '3', '4': '4', '5': '5', '6': '6',
-  '7': '7', '8': '8', '9': '9', '10': '10',
-  'jack': 'J', 'queen': 'Q', 'king': 'K', 'ace': 'A',
 };
 
 interface CardProps {
