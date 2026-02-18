@@ -18,12 +18,10 @@ function cardKey(c: Card): string {
 
 interface BotManagerOptions {
   actionDelayMs?: number;
-  inactivityTimeoutMs?: number;
 }
 
 export class BotManager {
   private actionDelayMs: number;
-  private inactivityTimeoutMs: number;
   /** Per-room bot state, keyed by `roomCode:botId` */
   private botStates = new Map<string, BotState>();
   /** Track which rooms have bots, for cleanup */
@@ -33,7 +31,6 @@ export class BotManager {
 
   constructor(options: BotManagerOptions = {}) {
     this.actionDelayMs = options.actionDelayMs ?? 300;
-    this.inactivityTimeoutMs = options.inactivityTimeoutMs ?? 60 * 60 * 1000;
   }
 
   static isBot(playerId: string): boolean {
@@ -194,38 +191,14 @@ export class BotManager {
     }
   }
 
-  /** Clean up rooms with bots that have been inactive */
-  cleanup(rooms: Map<string, Room> | { getRoom(code: string): Room | undefined, roomCodes(): string[] }): void {
-    const now = Date.now();
-    for (const [roomCode, botIds] of this.roomBots) {
-      // Clean up timer
-      const timer = this.activeTimers.get(roomCode);
-      if (timer) {
-        clearTimeout(timer);
-        this.activeTimers.delete(roomCode);
-      }
-
-      // Clean up bot state for rooms that no longer exist or are inactive
-      for (const botId of botIds) {
-        this.botStates.delete(`${roomCode}:${botId}`);
-      }
-    }
-    // Only clean up entries where the room is gone
+  /**
+   * Remove bot timers and state for rooms that no longer exist.
+   * Call after RoomManager.cleanup() so deleted rooms get purged here too.
+   */
+  cleanup(liveRoomCodes: Set<string>): void {
     for (const roomCode of [...this.roomBots.keys()]) {
-      // We don't have direct room access here, so just clean stale state
-      // The RoomManager.cleanup() handles room deletion; we clean our maps
-      const bots = this.roomBots.get(roomCode);
-      if (bots) {
-        let allGone = true;
-        for (const botId of bots) {
-          if (this.botStates.has(`${roomCode}:${botId}`)) {
-            allGone = false;
-            break;
-          }
-        }
-        if (allGone) {
-          this.roomBots.delete(roomCode);
-        }
+      if (!liveRoomCodes.has(roomCode)) {
+        this.cleanupRoom(roomCode);
       }
     }
   }

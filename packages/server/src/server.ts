@@ -134,10 +134,11 @@ wss.on('connection', (ws) => {
   });
 });
 
-// Cleanup stale rooms and connections every 5 minutes
+// Cleanup stale rooms, connections, and bot state every 5 minutes
 setInterval(() => {
   rooms.cleanup();
   connections.cleanup();
+  botManager.cleanup(rooms.getRoomCodes());
 }, 5 * 60 * 1000);
 
 server.listen(PORT, async () => {

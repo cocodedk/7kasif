@@ -155,6 +155,10 @@ export class RoomManager {
     return doGetTournamentView(room);
   }
 
+  getRoomCodes(): Set<string> {
+    return new Set(this.rooms.keys());
+  }
+
   removeRoom(code: string): void {
     this.rooms.delete(code);
   }
