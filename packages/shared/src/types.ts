@@ -44,7 +44,11 @@ export interface PendingQueenReveal {
   targetPlayerId: string; // the player who must reveal a card
 }
 
-export type PendingEffect = PendingChain | PendingAce | PendingPenalty | PendingQueenReveal;
+export interface PendingJackDeclare {
+  type: 'jack-declare';
+}
+
+export type PendingEffect = PendingChain | PendingAce | PendingPenalty | PendingQueenReveal | PendingJackDeclare;
 
 export interface Player {
   id: string;
@@ -108,13 +112,19 @@ export interface RevealCardAction {
   card: Card;
 }
 
+export interface DeclareSuitAction {
+  type: 'DECLARE_SUIT';
+  suit: Suit;
+}
+
 export type Action =
   | PlayCardAction
   | DrawCardAction
   | PassTurnAction
   | AnnounceOneCardAction
   | ChallengeNoAnnouncementAction
-  | RevealCardAction;
+  | RevealCardAction
+  | DeclareSuitAction;
 
 // ─── Game Events ───
 
@@ -312,13 +322,19 @@ export interface EndSessionMessage {
   type: 'END_SESSION';
 }
 
+export interface AddBotsMessage {
+  type: 'ADD_BOTS';
+  count: number; // 1-3
+}
+
 export type ClientMessage =
   | CreateRoomMessage
   | JoinRoomMessage
   | StartGameMessage
   | PlayerActionMessage
   | NextRoundMessage
-  | EndSessionMessage;
+  | EndSessionMessage
+  | AddBotsMessage;
 
 export interface RoomCreatedMessage {
   type: 'ROOM_CREATED';

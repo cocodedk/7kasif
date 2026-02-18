@@ -5,6 +5,7 @@ import { readFileSync, existsSync } from 'fs';
 import { join, resolve } from 'path';
 import { ConnectionManager } from './rooms/ConnectionManager.js';
 import { RoomManager } from './rooms/RoomManager.js';
+import { BotManager } from './rooms/BotManager.js';
 import { MessageHandler } from './rooms/MessageHandler.js';
 import { handleApiRoute } from './api/routes.js';
 import { createUser } from './auth/auth.js';
@@ -16,7 +17,8 @@ const VITE_DEV_URL = process.env.VITE_DEV_URL; // e.g. 'http://client:5173'
 
 const connections = new ConnectionManager();
 const rooms = new RoomManager();
-const handler = new MessageHandler(connections, rooms);
+const botManager = new BotManager();
+const handler = new MessageHandler(connections, rooms, botManager);
 
 function proxyToVite(req: import('http').IncomingMessage, res: import('http').ServerResponse): void {
   const url = new URL(VITE_DEV_URL!);

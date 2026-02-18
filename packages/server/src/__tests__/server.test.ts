@@ -14,6 +14,7 @@ vi.mock('../auth/auth.js', () => ({
 
 import { ConnectionManager } from '../rooms/ConnectionManager.js';
 import { RoomManager } from '../rooms/RoomManager.js';
+import { BotManager } from '../rooms/BotManager.js';
 import { MessageHandler } from '../rooms/MessageHandler.js';
 import type { ServerMessage, ClientMessage } from '@hafte-kasif/shared';
 
@@ -28,7 +29,7 @@ function createTestServer(): Promise<number> {
   return new Promise((resolve) => {
     connections = new ConnectionManager();
     rooms = new RoomManager();
-    handler = new MessageHandler(connections, rooms);
+    handler = new MessageHandler(connections, rooms, new BotManager({ actionDelayMs: 0 }));
 
     httpServer = createServer();
     wss = new WebSocketServer({ server: httpServer, path: '/ws' });

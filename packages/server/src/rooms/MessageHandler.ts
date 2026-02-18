@@ -1,8 +1,9 @@
 import type { WebSocket } from 'ws';
-import type { ClientMessage, ServerMessage, Action } from '@hafte-kasif/shared';
+import type { ClientMessage, ServerMessage, Action, GameEvent, GameState } from '@hafte-kasif/shared';
 import { FINISH_POINTS } from '@hafte-kasif/shared';
 import { ConnectionManager } from './ConnectionManager.js';
-import { RoomManager } from './RoomManager.js';
+import { RoomManager, type Room } from './RoomManager.js';
+import { BotManager } from './BotManager.js';
 import { applyAction } from '../engine/game.js';
 import { filterEventsForPlayer } from '../engine/view.js';
 import { verifyToken } from '../auth/auth.js';
@@ -11,6 +12,7 @@ export class MessageHandler {
   constructor(
     private connections: ConnectionManager,
     private rooms: RoomManager,
+    private botManager: BotManager,
   ) {}
 
   handleMessage(ws: WebSocket, raw: string): void {
@@ -43,6 +45,9 @@ export class MessageHandler {
         break;
       case 'END_SESSION':
         if (playerId) this.handleEndSession(playerId);
+        break;
+      case 'ADD_BOTS':
+        if (playerId) this.handleAddBots(playerId, msg.count);
         break;
     }
   }
@@ -155,6 +160,7 @@ export class MessageHandler {
 
     this.broadcastGameState(room.code);
     this.broadcastTournamentUpdate(room.code);
+    this.triggerBotTurn(room.code);
   }
 
   private handlePlayerAction(playerId: string, action: Action): void {
@@ -213,6 +219,11 @@ export class MessageHandler {
 
       this.broadcastTournamentUpdate(room.code);
     }
+
+    // Trigger bot turn if no game-over
+    if (!gameOverEvent) {
+      this.triggerBotTurn(room.code);
+    }
   }
 
   private handleNextRound(playerId: string, cardsPerPlayer: number): void {
@@ -251,6 +262,8 @@ export class MessageHandler {
 
     this.broadcastGameState(room.code);
     this.broadcastTournamentUpdate(room.code);
+    this.botManager.resetRoomBotStates(room.code);
+    this.triggerBotTurn(room.code);
   }
 
   private handleEndSession(playerId: string): void {
@@ -275,7 +288,95 @@ export class MessageHandler {
     }
   }
 
-  private broadcastGameState(roomCode: string, events?: import('@hafte-kasif/shared').GameEvent[], stateBefore?: import('@hafte-kasif/shared').GameState): void {
+  private handleAddBots(playerId: string, count: number): void {
+    const room = this.rooms.getRoomByPlayerId(playerId);
+    if (!room) return;
+    if (room.hostId !== playerId) {
+      this.connections.send(playerId, {
+        type: 'MOVE_REJECTED',
+        reason: 'Only the host can add bots',
+      });
+      return;
+    }
+    if (room.gameState) {
+      this.connections.send(playerId, {
+        type: 'MOVE_REJECTED',
+        reason: 'Cannot add bots during a game',
+      });
+      return;
+    }
+    if (count < 1 || count > 3) {
+      this.connections.send(playerId, {
+        type: 'MOVE_REJECTED',
+        reason: 'Bot count must be 1-3',
+      });
+      return;
+    }
+    if (room.players.length + count > 4) {
+      this.connections.send(playerId, {
+        type: 'MOVE_REJECTED',
+        reason: 'Too many players (max 4)',
+      });
+      return;
+    }
+
+    this.botManager.addBots(room, count);
+
+    // Broadcast updated player list to all human players
+    for (const p of room.players) {
+      this.connections.send(p.id, {
+        type: 'ROOM_JOINED',
+        playerId: p.id,
+        players: room.players.map(pp => ({ id: pp.id, name: pp.name })),
+      } satisfies ServerMessage);
+    }
+  }
+
+  private triggerBotTurn(roomCode: string): void {
+    const room = this.rooms.getRoom(roomCode);
+    if (!room) return;
+
+    this.botManager.scheduleBotTurn(
+      room,
+      (state, playerId) => this.rooms.getPlayerView(state, playerId),
+      (code, events, stateBefore) => this.broadcastGameState(code, events, stateBefore),
+      (r, events, state) => this.handleBotGameOver(r, events, state),
+    );
+  }
+
+  private handleBotGameOver(room: Room, events: GameEvent[], state: GameState): void {
+    const gameOverEvent = events.find(e => e.type === 'GAME_OVER');
+    if (!gameOverEvent || gameOverEvent.type !== 'GAME_OVER') return;
+
+    const finishingCard = state.finishingCard;
+    const finishingValue = finishingCard ? String(finishingCard.value) : 'unknown';
+    const isAceChainFull = gameOverEvent.points === FINISH_POINTS.ace_chain_full;
+
+    this.rooms.recordRoundResult(
+      room.code,
+      gameOverEvent.winnerId,
+      gameOverEvent.loserId,
+      gameOverEvent.points,
+      gameOverEvent.reversed,
+      finishingValue,
+      isAceChainFull,
+    );
+
+    for (const p of room.players) {
+      this.connections.send(p.id, {
+        type: 'GAME_OVER',
+        winnerId: gameOverEvent.winnerId,
+        loserId: gameOverEvent.loserId,
+        points: gameOverEvent.points,
+        reversed: gameOverEvent.reversed,
+        hands: gameOverEvent.hands,
+      } satisfies ServerMessage);
+    }
+
+    this.broadcastTournamentUpdate(room.code);
+  }
+
+  private broadcastGameState(roomCode: string, events?: GameEvent[], stateBefore?: GameState): void {
     const room = this.rooms.getRoom(roomCode);
     if (!room || !room.gameState) return;
 

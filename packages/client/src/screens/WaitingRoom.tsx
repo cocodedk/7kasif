@@ -44,14 +44,25 @@ export function WaitingRoom({ roomCode, players, isHost, send }: WaitingRoomProp
         <p className="text-sm text-gray-400">Players ({players.length}/4):</p>
         {players.map(p => (
           <div key={p.id} className="bg-white/5 rounded-lg px-4 py-2 flex items-center gap-2">
-            <div className="w-2 h-2 bg-green-500 rounded-full" />
+            <div className={`w-2 h-2 rounded-full ${p.id.startsWith('bot_') ? 'bg-blue-400' : 'bg-green-500'}`} />
             <span>{p.name}</span>
+            {p.id.startsWith('bot_') && (
+              <span className="text-xs text-blue-400/70 ml-auto">Bot</span>
+            )}
           </div>
         ))}
         {players.length < 3 && (
           <p className="text-yellow-500 text-xs text-center">
             Need at least {3 - players.length} more player{3 - players.length > 1 ? 's' : ''}
           </p>
+        )}
+        {isHost && players.length < 4 && (
+          <button
+            onClick={() => send({ type: 'ADD_BOTS', count: 1 })}
+            className="w-full bg-white/10 text-gray-300 py-2 rounded-lg active:bg-white/20 transition-colors text-sm"
+          >
+            + Add Bot
+          </button>
         )}
       </div>
 
