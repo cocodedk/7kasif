@@ -24,7 +24,7 @@ describe('Ace — non-matching card rejected', () => {
     log('Verify: play rejected (non-matching suit)');
     expect(r2.ok).toBe(false);
     if (r2.ok) return;
-    expect(r2.reason).toContain('Must play an Ace or a card of hearts');
+    expect(r2.reason).toContain('Must play an Ace, a Jack, or a card of hearts');
   });
 
   it('should reject a card not matching suit even if it matches discard value', () => {

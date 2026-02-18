@@ -92,11 +92,18 @@ html, body, #root {
 }
 
 /* Sea creatures swimming animation */
-@keyframes swim-right {
+@keyframes swim-left {
   from {
-    left: -80px;
+    right: -80px;
   }
   to {
-    left: 100%;
+    right: 100%;
   }
+}
+
+@keyframes bob {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  25% { transform: translateY(var(--bob-y)) rotate(var(--bob-rot)); }
+  50% { transform: translateY(0) rotate(0deg); }
+  75% { transform: translateY(calc(var(--bob-y) * -1)) rotate(calc(var(--bob-rot) * -1)); }
 }

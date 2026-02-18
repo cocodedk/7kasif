@@ -1,5 +1,5 @@
 import type {
-  GameState, Card, Action, PlayCardAction, Suit, PendingChain, PendingAce,
+  GameState, Card, Action, PlayCardAction, RevealCardAction, Suit, PendingChain, PendingAce, PendingPenalty,
 } from '@hafte-kasif/shared';
 import { cardEquals } from '@hafte-kasif/shared';
 
@@ -73,6 +73,8 @@ export function canPlayInChain(card: Card, chain: PendingChain, mode: GameState[
 export function canPlayOnAce(card: Card, aceEffect: PendingAce): boolean {
   // Can play another Ace
   if (card.value === 'ace') return true;
+  // Jack is wild — always playable
+  if (card.value === 'jack') return true;
   // Or a card matching the suit of the last Ace
   if (card.suit === aceEffect.suit) return true;
   return false;
@@ -87,11 +89,45 @@ export function validatePlayCard(
     return 'Not your turn';
   }
 
+  // Block play during queen-reveal — must reveal first
+  if (state.pendingEffect?.type === 'queen-reveal' && state.pendingEffect.targetPlayerId === playerId) {
+    return 'You must reveal a card first';
+  }
+
   if (!hasCardInHand(state, playerId, action.card)) {
     return 'Card not in your hand';
   }
 
   const { card } = action;
+
+  // During seven-penalty: can only play after drawing minimum
+  if (state.pendingEffect?.type === 'seven-penalty') {
+    if (state.pendingEffect.drawn < state.pendingEffect.penalty) {
+      return 'Must keep drawing — penalty not yet fulfilled';
+    }
+    // drawn >= penalty: normal play rules apply
+    if (!cardMatchesHouse(card, state)) {
+      return 'Card does not match the current house (suit or value)';
+    }
+    // Jack requires declared suit
+    if (card.value === 'jack' && !action.declaredSuit) {
+      return 'Must declare a suit when playing a Jack';
+    }
+    // 2 requires giveCard
+    const player = state.players.find(p => p.id === playerId)!;
+    if (card.value === 2 && player.hand.length > 1 && !action.giveCard) {
+      return 'Must specify a card to give when playing a 2';
+    }
+    if (card.value === 2 && action.giveCard) {
+      if (cardEquals(action.giveCard, card)) {
+        return 'Cannot give the same card you are playing';
+      }
+      if (!player.hand.some(c => cardEquals(c, action.giveCard!))) {
+        return 'Give card not in your hand';
+      }
+    }
+    return null;
+  }
 
   // During a 7-8-10 chain reaction
   if (state.pendingEffect?.type === 'seven-chain') {
@@ -107,7 +143,11 @@ export function validatePlayCard(
   // During an Ace chain
   if (state.pendingEffect?.type === 'ace-chain') {
     if (!canPlayOnAce(card, state.pendingEffect)) {
-      return `Must play an Ace or a card of ${state.pendingEffect.suit}`;
+      return `Must play an Ace, a Jack, or a card of ${state.pendingEffect.suit}`;
+    }
+    // Jack requires declared suit even during ace chain
+    if (card.value === 'jack' && !action.declaredSuit) {
+      return 'Must declare a suit when playing a Jack';
     }
     return null;
   }
@@ -137,10 +177,10 @@ export function validatePlayCard(
     return 'Card does not match the current house (suit or value)';
   }
 
-  // Check revealed card restriction — revealed cards cannot be played on the turn they're revealed
+  // Check locked card restriction — cards just revealed by Queen can't be played this turn
   const playerObj = state.players.find(p => p.id === playerId)!;
-  if (playerObj.revealedCards.some(c => cardEquals(c, card))) {
-    return 'Cannot play a revealed card this turn';
+  if (playerObj.lockedCards.some(c => cardEquals(c, card))) {
+    return 'Cannot play a card that was just revealed this turn';
   }
 
   return null;
@@ -150,6 +190,29 @@ export function validateDrawCard(state: GameState, playerId: string): string | n
   if (!isCurrentPlayer(state, playerId)) {
     return 'Not your turn';
   }
+  // Block draw during queen-reveal
+  if (state.pendingEffect?.type === 'queen-reveal' && state.pendingEffect.targetPlayerId === playerId) {
+    return 'You must reveal a card first';
+  }
+  // During seven-chain: always allow draw (accept chain penalty)
+  if (state.pendingEffect?.type === 'seven-chain') {
+    return null;
+  }
+  // During seven-penalty: can draw up to penalty + 1 (the optional extra)
+  if (state.pendingEffect?.type === 'seven-penalty') {
+    if (state.pendingEffect.drawn > state.pendingEffect.penalty) {
+      return 'Already drew the maximum cards for this penalty';
+    }
+    return null;
+  }
+  // During ace-chain: always allow draw (break chain)
+  if (state.pendingEffect?.type === 'ace-chain') {
+    return null;
+  }
+  // Normal turn: only one draw allowed
+  if (state.hasDrawnThisTurn) {
+    return 'Already drew a card this turn';
+  }
   return null;
 }
 
@@ -158,11 +221,58 @@ export function validatePassTurn(state: GameState, playerId: string): string | n
     return 'Not your turn';
   }
 
+  // Block pass during queen-reveal
+  if (state.pendingEffect?.type === 'queen-reveal' && state.pendingEffect.targetPlayerId === playerId) {
+    return 'You must reveal a card first';
+  }
+
   // Can't pass during a 7-chain — must counter or accept (draw)
   if (state.pendingEffect?.type === 'seven-chain') {
     return 'Cannot pass during a chain reaction — you must counter or draw';
   }
 
+  // Can't pass during an ace-chain — must play or draw
+  if (state.pendingEffect?.type === 'ace-chain') {
+    return 'Cannot pass during an ace chain — you must play or draw';
+  }
+
+  // During seven-penalty: can only pass after drawing the minimum
+  if (state.pendingEffect?.type === 'seven-penalty') {
+    if (state.pendingEffect.drawn < state.pendingEffect.penalty) {
+      return 'Must keep drawing — penalty not yet fulfilled';
+    }
+    return null;
+  }
+
+  // Normal turn: must draw or play before passing
+  if (!state.hasDrawnThisTurn) {
+    return 'You must draw or play a card before passing';
+  }
+
+  return null;
+}
+
+export function validateRevealCard(
+  state: GameState,
+  playerId: string,
+  action: RevealCardAction,
+): string | null {
+  if (!isCurrentPlayer(state, playerId)) {
+    return 'Not your turn';
+  }
+  if (state.pendingEffect?.type !== 'queen-reveal') {
+    return 'No queen reveal pending';
+  }
+  if (state.pendingEffect.targetPlayerId !== playerId) {
+    return 'You are not the target of the queen reveal';
+  }
+  if (!hasCardInHand(state, playerId, action.card)) {
+    return 'Card not in your hand';
+  }
+  const player = state.players.find(p => p.id === playerId)!;
+  if (player.revealedCards.some(c => cardEquals(c, action.card))) {
+    return 'Card is already revealed';
+  }
   return null;
 }
 
@@ -194,6 +304,8 @@ export function validateAction(
       if (target.hasAnnouncedOneCard) return 'Target has already announced';
       return null;
     }
+    case 'REVEAL_CARD':
+      return validateRevealCard(state, playerId, action);
     default:
       return 'Unknown action type';
   }

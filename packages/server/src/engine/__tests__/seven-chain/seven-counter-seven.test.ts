@@ -24,11 +24,11 @@ describe('Seven — counter with another 7', () => {
     expect(r2.ok).toBe(true);
     if (!r2.ok) return;
 
-    log('Verify: penalty=4, suit preserved');
+    log('Verify: penalty=4, suit updated to last 7');
     expect(r2.newState.pendingEffect).toEqual({
       type: 'seven-chain',
       penalty: 4,
-      suit: 'hearts', // keeps original suit
+      suit: 'diamonds', // suit of last 7 played
     });
     // Turn passes to p1
     log('Verify: chain continues to p1');

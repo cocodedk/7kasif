@@ -47,7 +47,7 @@ export function Card({ card, selected, onClick, small, revealed, playable, isMyT
         ${small ? 'w-10 h-14 text-xs' : 'w-14 h-20 text-sm'}
         bg-white rounded-lg border-2 shadow-lg
         ${selected ? 'border-yellow-400 shadow-yellow-400/40' : glowing ? 'border-emerald-400 shadow-emerald-400/30' : 'border-gray-200'}
-        ${revealed ? 'ring-2 ring-blue-400' : ''}
+        ${revealed ? 'ring-2 ring-pink-400 ring-offset-1 ring-offset-gray-900' : ''}
         ${onClick && !dimmed ? 'cursor-pointer active:scale-95' : ''}
         ${dimmed ? 'opacity-[0.65]' : ''}
         transition-all duration-150

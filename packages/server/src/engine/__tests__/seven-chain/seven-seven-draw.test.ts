@@ -24,15 +24,35 @@ describe('Seven — two 7s then draw 4', () => {
     expect(r2.ok).toBe(true);
     if (!r2.ok) return;
 
-    // p1 accepts penalty of 4
-    log('p1 draws (accepts penalty=4)');
+    // p1 accepts penalty of 4 by drawing
+    log('p1 draws 1st card (transitions to seven-penalty)');
     const r3 = applyAction(r2.newState, 'p1', { type: 'DRAW_CARD' });
     expect(r3.ok).toBe(true);
     if (!r3.ok) return;
+    expect(r3.newState.pendingEffect).toEqual({ type: 'seven-penalty', penalty: 4, drawn: 1, suit: 'diamonds' });
+    expect(r3.newState.players.find(p => p.id === 'p1')!.hand.length).toBe(3);
 
-    const p1 = r3.newState.players.find(p => p.id === 'p1')!;
-    log('Verify: p1 has 6 cards, chain ended');
-    expect(p1.hand.length).toBe(6); // 2 original + 4 drawn
-    expect(r3.newState.pendingEffect).toBeNull();
+    log('p1 draws 2nd card');
+    const r4 = applyAction(r3.newState, 'p1', { type: 'DRAW_CARD' });
+    expect(r4.ok).toBe(true);
+    if (!r4.ok) return;
+
+    log('p1 draws 3rd card');
+    const r5 = applyAction(r4.newState, 'p1', { type: 'DRAW_CARD' });
+    expect(r5.ok).toBe(true);
+    if (!r5.ok) return;
+
+    log('p1 draws 4th card (completes mandatory penalty)');
+    const r6 = applyAction(r5.newState, 'p1', { type: 'DRAW_CARD' });
+    expect(r6.ok).toBe(true);
+    if (!r6.ok) return;
+    expect(r6.newState.pendingEffect).toEqual({ type: 'seven-penalty', penalty: 4, drawn: 4, suit: 'diamonds' });
+    expect(r6.newState.players.find(p => p.id === 'p1')!.hand.length).toBe(6);
+
+    log('p1 passes (clears effect, advances turn)');
+    const r7 = applyAction(r6.newState, 'p1', { type: 'PASS_TURN' });
+    expect(r7.ok).toBe(true);
+    if (!r7.ok) return;
+    expect(r7.newState.pendingEffect).toBeNull();
   });
 });

@@ -4,6 +4,7 @@ interface AuthUser {
   id: number;
   email: string;
   displayName: string;
+  role: 'admin' | 'player';
 }
 
 interface AuthState {
@@ -25,7 +26,9 @@ export function useAuth() {
     const userJson = localStorage.getItem(USER_KEY);
     if (token && userJson) {
       try {
-        return { user: JSON.parse(userJson), token, loading: false };
+        const user = JSON.parse(userJson);
+        if (!user.role) user.role = 'player';
+        return { user, token, loading: false };
       } catch {
         // Corrupt data
       }
@@ -67,6 +70,8 @@ export function useAuth() {
       throw new Error(message);
     }
     const body = await res.json();
+    if (!body?.user) throw new Error('Invalid server response');
+    if (!body.user.role) body.user.role = 'player';
     setAuth(body.user, body.token);
     return body;
   }, [setAuth]);

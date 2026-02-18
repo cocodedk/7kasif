@@ -3,7 +3,7 @@ import { applyAction } from '../../game.js';
 import { createTestState, c, log } from '../helpers.js';
 
 describe('Queen — does not reveal playing player', () => {
-  it('should not add any revealed cards to the player who played the queen', () => {
+  it('should set pendingEffect for next player, not the player who played queen', () => {
     const state = createTestState({
       hands: [
         [c('4s'), c('5s')],       // p1
@@ -17,6 +17,9 @@ describe('Queen — does not reveal playing player', () => {
     const r1 = applyAction(state, 'p2', { type: 'PLAY_CARD', card: c('Qd') });
     expect(r1.ok).toBe(true);
     if (!r1.ok) return;
+
+    log('Verify: pendingEffect targets p3 (next player), not p2 (self)');
+    expect(r1.newState.pendingEffect).toEqual({ type: 'queen-reveal', targetPlayerId: 'p3' });
 
     log('Verify: p2 (playing player) has no revealed cards');
     const p2 = r1.newState.players.find(p => p.id === 'p2')!;

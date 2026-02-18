@@ -7,7 +7,7 @@ describe('Seven — 7 + 7 + 8 add', () => {
     // 3-player game so after p2→p3 play 7s, turn goes to p1
     const state = createTestState({
       hands: [
-        [c('8h'), c('5s')],       // p1
+        [c('8d'), c('5s')],       // p1 (8d matches last 7d)
         [c('7h'), c('9c')],       // p2
         [c('7d'), c('Ks')],       // p3
       ],
@@ -28,11 +28,11 @@ describe('Seven — 7 + 7 + 8 add', () => {
     // In 3-player game, after p3 plays, turn goes to p1
     expect(r2.newState.players[r2.newState.currentPlayerIndex].id).toBe('p1');
 
-    log('p1 plays 8♥ and adds 3 to penalty (4+3=7)');
-    // p1 adds with 8h
+    log('p1 plays 8♦ and adds 3 to penalty (4+3=7)');
+    // p1 adds with 8d (matches last 7d)
     const r3 = applyAction(r2.newState, 'p1', {
       type: 'PLAY_CARD',
-      card: c('8h'),
+      card: c('8d'),
       chainChoice: 'add',
     });
     expect(r3.ok).toBe(true);

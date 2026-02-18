@@ -62,6 +62,7 @@ export function createTestState(options: {
     name: `Player ${i + 1}`,
     hand: [...hand],
     revealedCards: [],
+    lockedCards: [],
     hasAnnouncedOneCard: false,
   }));
 
@@ -88,8 +89,10 @@ export function createTestState(options: {
     cardsPerPlayer: Math.max(...hands.map(h => h.length)),
     mode,
     lastAction: null,
+    hasDrawnThisTurn: false,
     winner: null,
     losers: [],
     finishingCard: null,
+    pendingWinner: null,
   };
 }

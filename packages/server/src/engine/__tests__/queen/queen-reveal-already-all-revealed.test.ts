@@ -1,10 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { applyAction } from '../../game.js';
 import { createTestState, c, log } from '../helpers.js';
-import { cardEquals } from '@hafte-kasif/shared';
 
 describe('Queen — all cards already revealed', () => {
-  it('should not add a new reveal when all cards are already revealed', () => {
+  it('should not set pendingEffect when all cards are already revealed', () => {
     const state = createTestState({
       hands: [
         [c('4s'), c('5s')],       // p1
@@ -14,7 +13,6 @@ describe('Queen — all cards already revealed', () => {
       firstCard: c('4d'),
     });
 
-    // Pre-reveal all of p3's cards
     const p3 = state.players.find(p => p.id === 'p3')!;
     p3.revealedCards = [...p3.hand];
 
@@ -22,6 +20,9 @@ describe('Queen — all cards already revealed', () => {
     const r1 = applyAction(state, 'p2', { type: 'PLAY_CARD', card: c('Qd') });
     expect(r1.ok).toBe(true);
     if (!r1.ok) return;
+
+    log('Verify: no pendingEffect set (no unrevealed cards)');
+    expect(r1.newState.pendingEffect).toBeNull();
 
     log('Verify: p3 still has same number of revealed cards');
     const p3After = r1.newState.players.find(p => p.id === 'p3')!;

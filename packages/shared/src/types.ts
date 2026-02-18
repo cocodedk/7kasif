@@ -32,13 +32,26 @@ export interface PendingAce {
   acesPlayed: number; // count of Aces in this chain
 }
 
-export type PendingEffect = PendingChain | PendingAce;
+export interface PendingPenalty {
+  type: 'seven-penalty';
+  penalty: number; // minimum cards to draw (e.g. 2)
+  drawn: number; // cards drawn so far
+  suit: Suit; // preserved from the chain
+}
+
+export interface PendingQueenReveal {
+  type: 'queen-reveal';
+  targetPlayerId: string; // the player who must reveal a card
+}
+
+export type PendingEffect = PendingChain | PendingAce | PendingPenalty | PendingQueenReveal;
 
 export interface Player {
   id: string;
   name: string;
   hand: Card[];
   revealedCards: Card[]; // cards revealed by Queen, visible to all
+  lockedCards: Card[]; // cards that can't be played this turn (just revealed)
   hasAnnouncedOneCard: boolean;
 }
 
@@ -54,9 +67,11 @@ export interface GameState {
   cardsPerPlayer: number; // 2-7, set at start
   mode: GameMode;
   lastAction: Action | null;
+  hasDrawnThisTurn: boolean;
   winner: string | null; // playerId
   losers: string[]; // playerIds (can be multiple on tie reversal)
   finishingCard: Card | null;
+  pendingWinner: { playerId: string; card: Card } | null;
 }
 
 export type GameMode = 'standard' | 'freestyle';
@@ -88,12 +103,18 @@ export interface ChallengeNoAnnouncementAction {
   targetPlayerId: string;
 }
 
+export interface RevealCardAction {
+  type: 'REVEAL_CARD';
+  card: Card;
+}
+
 export type Action =
   | PlayCardAction
   | DrawCardAction
   | PassTurnAction
   | AnnounceOneCardAction
-  | ChallengeNoAnnouncementAction;
+  | ChallengeNoAnnouncementAction
+  | RevealCardAction;
 
 // ─── Game Events ───
 
@@ -113,7 +134,7 @@ export interface CardGivenEvent {
   type: 'CARD_GIVEN';
   fromPlayerId: string;
   toPlayerId: string;
-  card: Card;
+  card: Card | null;
 }
 
 export interface TurnPassedEvent {
@@ -148,6 +169,10 @@ export interface ChainReactionEvent {
   targetPlayerId: string;
 }
 
+export interface DeckReshuffledEvent {
+  type: 'DECK_RESHUFFLED';
+}
+
 export interface OneCardAnnouncedEvent {
   type: 'ONE_CARD_ANNOUNCED';
   playerId: string;
@@ -160,12 +185,21 @@ export interface AnnouncementChallengedEvent {
   penalty: boolean; // true if penalty applied
 }
 
+export interface PlayerHandSummary {
+  playerId: string;
+  playerName: string;
+  handValue: number;
+  sevens: number;
+  cardCount: number;
+}
+
 export interface GameOverEvent {
   type: 'GAME_OVER';
   winnerId: string;
   loserId: string;
   points: number;
   reversed: boolean;
+  hands: PlayerHandSummary[]; // all non-winner players' hand info
 }
 
 export type GameEvent =
@@ -178,6 +212,7 @@ export type GameEvent =
   | CardRevealedEvent
   | HouseChangedEvent
   | ChainReactionEvent
+  | DeckReshuffledEvent
   | OneCardAnnouncedEvent
   | AnnouncementChallengedEvent
   | GameOverEvent;
@@ -300,6 +335,7 @@ export interface RoomJoinedMessage {
 export interface GameStateMessage {
   type: 'GAME_STATE';
   state: PlayerView;
+  events?: GameEvent[]; // events from the action that produced this state
 }
 
 export interface MoveRejectedMessage {
@@ -313,6 +349,7 @@ export interface GameOverMessage {
   loserId: string;
   points: number;
   reversed: boolean;
+  hands: PlayerHandSummary[];
 }
 
 export interface TournamentUpdateMessage {
@@ -325,6 +362,15 @@ export interface SessionEndedMessage {
   tournament: TournamentView;
 }
 
+export interface DebugGameInitMessage {
+  type: 'DEBUG_GAME_INIT';
+  deck: Card[];
+  dealerId: string;
+  cardsPerPlayer: number;
+  mode: GameMode;
+  players: { id: string; name: string }[];
+}
+
 export type ServerMessage =
   | RoomCreatedMessage
   | RoomJoinedMessage
@@ -332,7 +378,8 @@ export type ServerMessage =
   | MoveRejectedMessage
   | GameOverMessage
   | TournamentUpdateMessage
-  | SessionEndedMessage;
+  | SessionEndedMessage
+  | DebugGameInitMessage;
 
 // ─── Player View (filtered state — hides other players' cards) ───
 
@@ -347,6 +394,7 @@ export interface OpponentView {
 export interface PlayerView {
   phase: GamePhase;
   myHand: Card[];
+  myRevealedCards: Card[]; // my cards revealed by Queen (visible to all)
   opponents: OpponentView[];
   currentPlayerId: string;
   direction: Direction;
@@ -354,5 +402,6 @@ export interface PlayerView {
   deckCount: number;
   pendingEffect: PendingEffect | null;
   declaredSuit: Suit | null; // if Jack changed the house
+  hasDrawnThisTurn: boolean;
   mode: GameMode;
 }

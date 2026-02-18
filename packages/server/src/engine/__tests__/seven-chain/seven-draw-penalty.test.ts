@@ -22,16 +22,17 @@ describe('Seven — draw penalty', () => {
     expect(r1.newState.pendingEffect).toEqual({ type: 'seven-chain', penalty: 2, suit: 'hearts' });
     expect(r1.newState.players[r1.newState.currentPlayerIndex].id).toBe('p3');
 
-    // p3 draws — accepts penalty
-    log('p3 draws (accepts penalty)');
+    // p3 draws first card — accepts penalty, transitions to seven-penalty
+    log('p3 draws first card (accepts penalty)');
     const r2 = applyAction(r1.newState, 'p3', { type: 'DRAW_CARD' });
     expect(r2.ok).toBe(true);
     if (!r2.ok) return;
 
-    const p3 = r2.newState.players.find(p => p.id === 'p3')!;
-    log('Verify: p3 has 4 cards, chain ended');
-    expect(p3.hand.length).toBe(4); // 2 original + 2 penalty
-    expect(r2.newState.pendingEffect).toBeNull();
+    let p3 = r2.newState.players.find(p => p.id === 'p3')!;
+    log('Verify: p3 has 3 cards, seven-penalty active, drawn=1, still p3 turn');
+    expect(p3.hand.length).toBe(3); // 2 original + 1 drawn
+    expect(r2.newState.pendingEffect).toEqual({ type: 'seven-penalty', penalty: 2, drawn: 1, suit: 'hearts' });
+    expect(r2.newState.players[r2.newState.currentPlayerIndex].id).toBe('p3');
 
     // Chain reaction event
     const chainEvent = r2.events.find(e => e.type === 'CHAIN_REACTION');
@@ -41,8 +42,26 @@ describe('Seven — draw penalty', () => {
       expect(chainEvent.targetPlayerId).toBe('p3');
     }
 
-    // Turn advances to p1
-    log('Verify: turn advances to p1');
-    expect(r2.newState.players[r2.newState.currentPlayerIndex].id).toBe('p1');
+    // p3 draws second card — completes mandatory penalty draws
+    log('p3 draws second card');
+    const r3 = applyAction(r2.newState, 'p3', { type: 'DRAW_CARD' });
+    expect(r3.ok).toBe(true);
+    if (!r3.ok) return;
+
+    p3 = r3.newState.players.find(p => p.id === 'p3')!;
+    log('Verify: p3 has 4 cards, seven-penalty active, drawn=2, still p3 turn');
+    expect(p3.hand.length).toBe(4); // 2 original + 2 drawn
+    expect(r3.newState.pendingEffect).toEqual({ type: 'seven-penalty', penalty: 2, drawn: 2, suit: 'hearts' });
+    expect(r3.newState.players[r3.newState.currentPlayerIndex].id).toBe('p3');
+
+    // p3 passes — ends turn
+    log('p3 passes');
+    const r4 = applyAction(r3.newState, 'p3', { type: 'PASS_TURN' });
+    expect(r4.ok).toBe(true);
+    if (!r4.ok) return;
+
+    log('Verify: chain ended, turn advances to p1');
+    expect(r4.newState.pendingEffect).toBeNull();
+    expect(r4.newState.players[r4.newState.currentPlayerIndex].id).toBe('p1');
   });
 });

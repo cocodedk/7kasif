@@ -14,11 +14,18 @@ services:
       - DATABASE_URL=postgresql://hk:devpass@postgres:5432/hafte_kasif
       - JWT_SECRET=dev-jwt-secret-change-in-production
       - CORS_ORIGIN=http://localhost:5173
+      - DEBUG_GAME_LOG=1
       - VITE_DEV_URL=http://client:5173
       - APP_URL=http://localhost:3000
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASS=${SMTP_PASS}
+      - SMTP_FROM=${SMTP_FROM}
+      - ADMIN_EMAIL=${ADMIN_EMAIL}
     depends_on:
       - postgres
-    command: npx tsx watch packages/server/src/server.ts
+    command: npx tsx watch --ignore 'packages/server/src/__tests__/**' packages/server/src/server.ts
     restart: unless-stopped
 
   client:

@@ -19,6 +19,7 @@ export function createInitialState(
     name,
     hand: [],
     revealedCards: [],
+    lockedCards: [],
     hasAnnouncedOneCard: false,
   }));
 
@@ -50,9 +51,11 @@ export function createInitialState(
     cardsPerPlayer,
     mode,
     lastAction: null,
+    hasDrawnThisTurn: false,
     winner: null,
     losers: [],
     finishingCard: null,
+    pendingWinner: null,
   };
 
   // Apply first card effects (dealer is treated as the player who played it)
@@ -118,6 +121,13 @@ function applyFirstCardEffects(state: GameState, dealerIndex: number, card: Card
       }
       break;
     }
+    case 'king': {
+      // Skip next player + they draw 1
+      const skippedIdx = nextIdx(dealerIndex, 1);
+      drawCardsFromDeck(state, skippedIdx, 1);
+      state.currentPlayerIndex = nextIdx(dealerIndex, 2);
+      break;
+    }
     case 10: {
       // Reverse direction
       state.direction = -1;
@@ -138,20 +148,15 @@ function applyFirstCardEffects(state: GameState, dealerIndex: number, card: Card
       break;
     }
     case 'queen': {
-      // Auto-reveal a random card from the first player's hand
+      // Set pending queen-reveal for the first player
       const firstIdx = nextIdx(dealerIndex, 1);
       const firstPlayer = state.players[firstIdx];
       if (firstPlayer.hand.length > 0) {
-        const revealCard = firstPlayer.hand[Math.floor(Math.random() * firstPlayer.hand.length)];
-        firstPlayer.revealedCards.push(revealCard);
+        state.pendingEffect = {
+          type: 'queen-reveal',
+          targetPlayerId: firstPlayer.id,
+        };
       }
-      break;
-    }
-    case 'king': {
-      // Skip next + draw 1
-      const skippedIdx = nextIdx(dealerIndex, 1);
-      drawCardsFromDeck(state, skippedIdx, 1);
-      state.currentPlayerIndex = nextIdx(dealerIndex, 2);
       break;
     }
     default:

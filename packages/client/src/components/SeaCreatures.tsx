@@ -49,6 +49,9 @@ interface SwimItem {
   duration: number;
   delay: number;
   opacity: number;
+  bobY: number;
+  bobRot: number;
+  bobDuration: number;
   key: string;
 }
 
@@ -66,6 +69,9 @@ function generateItems() {
         duration: randomBetween(12, 30),
         delay: randomBetween(0, 20),
         opacity: randomBetween(0.25, 0.6),
+        bobY: randomBetween(10, 40),
+        bobRot: randomBetween(3, 12),
+        bobDuration: randomBetween(3, 7),
         key: `sea-${creature.emoji}-${j}`,
       });
     }
@@ -82,6 +88,9 @@ function generateItems() {
         duration: randomBetween(14, 28),
         delay: randomBetween(0, 22),
         opacity: randomBetween(0.2, 0.45),
+        bobY: randomBetween(8, 30),
+        bobRot: randomBetween(5, 15),
+        bobDuration: randomBetween(2, 5),
         key: `card-${card.emoji}-${j}`,
       });
     }
@@ -101,6 +110,9 @@ function generateItems() {
       duration: randomBetween(16, 32),
       delay: randomBetween(0, 25),
       opacity: randomBetween(0.25, 0.5),
+      bobY: randomBetween(5, 20),
+      bobRot: randomBetween(2, 8),
+      bobDuration: randomBetween(3, 6),
       key: `name-${name}`,
     });
   }
@@ -119,10 +131,12 @@ export function SeaCreatures() {
           className="absolute"
           style={{
             top: `${c.y}%`,
-            left: -80,
+            right: -80,
             opacity: c.opacity,
-            animation: `swim-right ${c.duration}s linear ${c.delay}s infinite`,
-          }}
+            '--bob-y': `${c.bobY}px`,
+            '--bob-rot': `${c.bobRot}deg`,
+            animation: `swim-left ${c.duration}s linear ${c.delay}s infinite, bob ${c.bobDuration}s ease-in-out ${c.delay}s infinite`,
+          } as React.CSSProperties}
         >
           {c.content}
         </div>

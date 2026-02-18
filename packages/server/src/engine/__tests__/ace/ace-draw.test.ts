@@ -25,11 +25,17 @@ describe('Ace — draw to end chain', () => {
     expect(r2.ok).toBe(true);
     if (!r2.ok) return;
 
-    log('Verify: ace chain cleared, turn advances to p3');
+    log('Verify: ace chain cleared, player stays on turn');
     expect(r2.newState.pendingEffect).toBeNull();
-    expect(r2.newState.players[r2.newState.currentPlayerIndex].id).toBe('p3');
+    expect(r2.newState.players[r2.newState.currentPlayerIndex].id).toBe('p2');
     // p2 drew 1 card: had 1 (9c after playing Ah), now 2
     const p2 = r2.newState.players.find(p => p.id === 'p2')!;
     expect(p2.hand.length).toBe(2);
+
+    log('p2 passes to end turn');
+    const r3 = applyAction(r2.newState, 'p2', { type: 'PASS_TURN' });
+    expect(r3.ok).toBe(true);
+    if (!r3.ok) return;
+    expect(r3.newState.players[r3.newState.currentPlayerIndex].id).toBe('p3');
   });
 });

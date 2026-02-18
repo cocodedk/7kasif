@@ -4,6 +4,7 @@ import { FINISH_POINTS } from '@hafte-kasif/shared';
 import { ConnectionManager } from './ConnectionManager.js';
 import { RoomManager } from './RoomManager.js';
 import { applyAction } from '../engine/game.js';
+import { filterEventsForPlayer } from '../engine/view.js';
 import { verifyToken } from '../auth/auth.js';
 
 export class MessageHandler {
@@ -22,6 +23,7 @@ export class MessageHandler {
     }
 
     const playerId = this.connections.getPlayerIdByWs(ws);
+    if (process.env.DEBUG_GAME_LOG) console.log(`[MSG] type=${msg.type} playerId=${playerId || 'NONE'}`);
 
     switch (msg.type) {
       case 'CREATE_ROOM':
@@ -46,12 +48,16 @@ export class MessageHandler {
   }
 
   private resolvePlayerId(token?: string): { playerId: string; userId: number } | null {
+    if (process.env.DEBUG_GAME_LOG) {
+      console.log(`[AUTH] resolvePlayerId token=${token ? 'PRESENT' : 'MISSING'}`);
+    }
     if (token) {
       try {
         const decoded = verifyToken(token);
+        if (process.env.DEBUG_GAME_LOG) console.log(`[AUTH] verified userId=${decoded.userId}`);
         return { playerId: `user_${decoded.userId}`, userId: decoded.userId };
-      } catch {
-        // Invalid token
+      } catch (err: any) {
+        console.error(`[AUTH] verifyToken failed:`, err.message);
       }
     }
     return null;
@@ -124,13 +130,27 @@ export class MessageHandler {
       return;
     }
 
-    const state = this.rooms.startGame(room.code, cardsPerPlayer);
-    if (!state) {
+    const result = this.rooms.startGame(room.code, cardsPerPlayer);
+    if (!result) {
       this.connections.send(playerId, {
         type: 'MOVE_REJECTED',
         reason: 'Cannot start game (need 3-4 players, valid card count)',
       });
       return;
+    }
+
+    // Send debug game init info (env-gated)
+    if (process.env.DEBUG_GAME_LOG) {
+      for (const p of room.players) {
+        this.connections.send(p.id, {
+          type: 'DEBUG_GAME_INIT',
+          deck: result.deck,
+          dealerId: result.state.dealerId,
+          cardsPerPlayer,
+          mode: room.mode,
+          players: room.players.map(pp => ({ id: pp.id, name: pp.name })),
+        } satisfies import('@hafte-kasif/shared').ServerMessage);
+      }
     }
 
     this.broadcastGameState(room.code);
@@ -147,6 +167,7 @@ export class MessageHandler {
       return;
     }
 
+    const stateBefore = room.gameState;
     const result = applyAction(room.gameState, playerId, action);
 
     if (!result.ok) {
@@ -160,7 +181,7 @@ export class MessageHandler {
     room.gameState = result.newState;
     room.lastActivityAt = Date.now();
 
-    this.broadcastGameState(room.code);
+    this.broadcastGameState(room.code, result.events, stateBefore);
 
     // Check for game over — record round result in tournament
     const gameOverEvent = result.events.find(e => e.type === 'GAME_OVER');
@@ -186,6 +207,7 @@ export class MessageHandler {
           loserId: gameOverEvent.loserId,
           points: gameOverEvent.points,
           reversed: gameOverEvent.reversed,
+          hands: gameOverEvent.hands,
         } satisfies ServerMessage);
       }
 
@@ -204,13 +226,27 @@ export class MessageHandler {
       return;
     }
 
-    const state = this.rooms.startGame(room.code, cardsPerPlayer);
-    if (!state) {
+    const result = this.rooms.startGame(room.code, cardsPerPlayer);
+    if (!result) {
       this.connections.send(playerId, {
         type: 'MOVE_REJECTED',
         reason: 'Cannot start next round',
       });
       return;
+    }
+
+    // Send debug game init info (env-gated)
+    if (process.env.DEBUG_GAME_LOG) {
+      for (const p of room.players) {
+        this.connections.send(p.id, {
+          type: 'DEBUG_GAME_INIT',
+          deck: result.deck,
+          dealerId: result.state.dealerId,
+          cardsPerPlayer,
+          mode: room.mode,
+          players: room.players.map(pp => ({ id: pp.id, name: pp.name })),
+        } satisfies import('@hafte-kasif/shared').ServerMessage);
+      }
     }
 
     this.broadcastGameState(room.code);
@@ -239,15 +275,19 @@ export class MessageHandler {
     }
   }
 
-  private broadcastGameState(roomCode: string): void {
+  private broadcastGameState(roomCode: string, events?: import('@hafte-kasif/shared').GameEvent[], stateBefore?: import('@hafte-kasif/shared').GameState): void {
     const room = this.rooms.getRoom(roomCode);
     if (!room || !room.gameState) return;
 
     for (const p of room.players) {
       const view = this.rooms.getPlayerView(room.gameState, p.id);
+      const playerEvents = events && events.length > 0 && stateBefore
+        ? filterEventsForPlayer(events, p.id, stateBefore)
+        : events;
       this.connections.send(p.id, {
         type: 'GAME_STATE',
         state: view,
+        ...(playerEvents && playerEvents.length > 0 ? { events: playerEvents } : {}),
       } satisfies ServerMessage);
     }
   }

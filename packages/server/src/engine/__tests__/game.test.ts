@@ -208,9 +208,16 @@ describe('Ace Mechanics', () => {
       expect(result.ok).toBe(true);
 
       if (result.ok) {
-        // Turn advances after draw in Ace chain
+        // After draw, ace chain cleared but player stays on turn
         expect(result.newState.pendingEffect).toBeNull();
-        expect(result.newState.players[result.newState.currentPlayerIndex].id).toBe('p3');
+        expect(result.newState.players[result.newState.currentPlayerIndex].id).toBe('p2');
+
+        // p2 passes to end turn
+        result = applyAction(result.newState, 'p2', { type: 'PASS_TURN' });
+        expect(result.ok).toBe(true);
+        if (result.ok) {
+          expect(result.newState.players[result.newState.currentPlayerIndex].id).toBe('p3');
+        }
       }
     }
   });
@@ -291,6 +298,7 @@ describe('Card Effects', () => {
     if (result.ok) {
       expect(result.newState.phase).toBe('finished');
       const gameOver = result.events.find(e => e.type === 'GAME_OVER');
+      expect(gameOver).toBeDefined();
       if (gameOver?.type === 'GAME_OVER') {
         expect(gameOver.points).toBe(1);
       }
@@ -510,6 +518,7 @@ describe('Jack', () => {
     if (result.ok) {
       expect(result.newState.phase).toBe('finished');
       const gameOver = result.events.find(e => e.type === 'GAME_OVER');
+      expect(gameOver).toBeDefined();
       if (gameOver?.type === 'GAME_OVER') {
         expect(gameOver.points).toBe(2);
       }
@@ -591,14 +600,32 @@ describe('Chain Reactions', () => {
     expect(result.ok).toBe(true);
 
     if (result.ok) {
-      // p3 has no counter — must draw
+      // p3 has no counter — first draw transitions to seven-penalty
       result = applyAction(result.newState, 'p3', { type: 'DRAW_CARD' });
       expect(result.ok).toBe(true);
 
       if (result.ok) {
-        const p3 = result.newState.players.find(p => p.id === 'p3')!;
-        expect(p3.hand.length).toBe(4); // 2 + 2 drawn
-        expect(result.newState.pendingEffect).toBeNull();
+        const p3a = result.newState.players.find(p => p.id === 'p3')!;
+        expect(p3a.hand.length).toBe(3); // 2 + 1 drawn
+        expect(result.newState.pendingEffect).toEqual({
+          type: 'seven-penalty', penalty: 2, drawn: 1, suit: 'hearts',
+        });
+
+        // p3 draws second mandatory card
+        result = applyAction(result.newState, 'p3', { type: 'DRAW_CARD' });
+        expect(result.ok).toBe(true);
+
+        if (result.ok) {
+          const p3b = result.newState.players.find(p => p.id === 'p3')!;
+          expect(p3b.hand.length).toBe(4); // 2 + 2 drawn
+
+          // p3 passes to end turn
+          result = applyAction(result.newState, 'p3', { type: 'PASS_TURN' });
+          expect(result.ok).toBe(true);
+          if (result.ok) {
+            expect(result.newState.pendingEffect).toBeNull();
+          }
+        }
       }
     }
   });
@@ -625,7 +652,7 @@ describe('Chain Reactions', () => {
         expect(result.newState.pendingEffect).toEqual({
           type: 'seven-chain',
           penalty: 4,
-          suit: 'hearts', // original suit
+          suit: 'diamonds', // suit of the last 7 played
         });
         // p1 must counter or draw 4
         expect(result.newState.players[result.newState.currentPlayerIndex].id).toBe('p1');
@@ -684,10 +711,26 @@ describe('Chain Reactions', () => {
       expect(result.ok).toBe(true);
 
       if (result.ok) {
-        // Penalty redirected to player 2 ahead of p3 = p1
-        const p1 = result.newState.players.find(p => p.id === 'p1')!;
-        expect(p1.hand.length).toBe(4); // 2 + 2 drawn
-        expect(result.newState.pendingEffect).toBeNull();
+        // Penalty redirected to player 2 ahead of p3 = p1, draws incrementally
+        const p1a = result.newState.players.find(p => p.id === 'p1')!;
+        expect(p1a.hand.length).toBe(3); // 2 + 1 drawn
+        expect(result.newState.players[result.newState.currentPlayerIndex].id).toBe('p1');
+        expect(result.newState.pendingEffect).toEqual({
+          type: 'seven-penalty', penalty: 2, drawn: 1, suit: 'hearts',
+        });
+
+        // p1 draws second card
+        result = applyAction(result.newState, 'p1', { type: 'DRAW_CARD' });
+        expect(result.ok).toBe(true);
+
+        if (result.ok) {
+          // p1 passes to end turn
+          result = applyAction(result.newState, 'p1', { type: 'PASS_TURN' });
+          expect(result.ok).toBe(true);
+          if (result.ok) {
+            expect(result.newState.pendingEffect).toBeNull();
+          }
+        }
       }
     }
   });
@@ -789,6 +832,7 @@ describe('Winning & Scoring', () => {
     if (result.ok) {
       expect(result.newState.phase).toBe('finished');
       const gameOver = result.events.find(e => e.type === 'GAME_OVER');
+      expect(gameOver).toBeDefined();
       if (gameOver?.type === 'GAME_OVER') {
         expect(gameOver.points).toBe(1);
       }
@@ -813,6 +857,7 @@ describe('Winning & Scoring', () => {
     expect(result.ok).toBe(true);
     if (result.ok) {
       const gameOver = result.events.find(e => e.type === 'GAME_OVER');
+      expect(gameOver).toBeDefined();
       if (gameOver?.type === 'GAME_OVER') {
         expect(gameOver.loserId).toBe('p1'); // p1 has highest hand value
       }
@@ -844,6 +889,7 @@ describe('Winning & Scoring', () => {
     expect(result.ok).toBe(true);
     if (result.ok) {
       const gameOver = result.events.find(e => e.type === 'GAME_OVER');
+      expect(gameOver).toBeDefined();
       if (gameOver?.type === 'GAME_OVER') {
         expect(gameOver.reversed).toBe(true);
         expect(gameOver.loserId).toBe('p2'); // winner becomes loser

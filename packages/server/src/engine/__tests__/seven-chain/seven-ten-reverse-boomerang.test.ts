@@ -31,15 +31,39 @@ describe('Seven — 10 reverse boomerang', () => {
     expect(r2.newState.players[r2.newState.currentPlayerIndex].id).toBe('p2');
     expect((r2.newState.pendingEffect as any)?.penalty).toBe(2);
 
-    log('p2 draws 2 cards to accept penalty');
-    // p2 accepts penalty — draws 2
+    log('p2 draws 1st card');
+    // p2 accepts penalty — draws 1st card
     const r3 = applyAction(r2.newState, 'p2', { type: 'DRAW_CARD' });
     expect(r3.ok).toBe(true);
     if (!r3.ok) return;
 
-    log('Verify: p2 has 3 cards (1 remaining + 2 penalty), pending effect cleared');
-    const p2 = r3.newState.players.find(p => p.id === 'p2')!;
-    expect(p2.hand.length).toBe(3); // 1 (9c after playing 7h) + 2 penalty
-    expect(r3.newState.pendingEffect).toBeNull();
+    log('Verify: p2 has 2 cards, seven-penalty with drawn=1');
+    let p2 = r3.newState.players.find(p => p.id === 'p2')!;
+    expect(p2.hand.length).toBe(2); // 1 (9c after playing 7h) + 1 drawn
+    expect(r3.newState.pendingEffect?.type).toBe('seven-penalty');
+    expect((r3.newState.pendingEffect as any)?.penalty).toBe(2);
+    expect((r3.newState.pendingEffect as any)?.drawn).toBe(1);
+
+    log('p2 draws 2nd card');
+    // p2 draws 2nd card
+    const r4 = applyAction(r3.newState, 'p2', { type: 'DRAW_CARD' });
+    expect(r4.ok).toBe(true);
+    if (!r4.ok) return;
+
+    log('Verify: p2 has 3 cards, seven-penalty with drawn=2');
+    p2 = r4.newState.players.find(p => p.id === 'p2')!;
+    expect(p2.hand.length).toBe(3); // 1 + 2 drawn
+    expect(r4.newState.pendingEffect?.type).toBe('seven-penalty');
+    expect((r4.newState.pendingEffect as any)?.penalty).toBe(2);
+    expect((r4.newState.pendingEffect as any)?.drawn).toBe(2);
+
+    log('p2 passes to end turn');
+    // p2 passes to end turn
+    const r5 = applyAction(r4.newState, 'p2', { type: 'PASS_TURN' });
+    expect(r5.ok).toBe(true);
+    if (!r5.ok) return;
+
+    log('Verify: pending effect cleared, turn advances');
+    expect(r5.newState.pendingEffect).toBeNull();
   });
 });

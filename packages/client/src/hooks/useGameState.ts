@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useReducer } from 'react';
-import type { ServerMessage, PlayerView, TournamentView } from '@hafte-kasif/shared';
+import type { ServerMessage, PlayerView, TournamentView, GameEvent, PlayerHandSummary } from '@hafte-kasif/shared';
 
 interface LobbyState {
   screen: 'home' | 'waiting';
@@ -13,11 +13,13 @@ interface GameOverInfo {
   loserId: string;
   points: number;
   reversed: boolean;
+  hands: PlayerHandSummary[];
 }
 
 interface AppState {
   lobby: LobbyState;
   game: PlayerView | null;
+  lastEvents: GameEvent[];
   gameOver: GameOverInfo | null;
   tournament: TournamentView | null;
   sessionEnded: boolean;
@@ -27,7 +29,7 @@ interface AppState {
 type AppAction =
   | { type: 'ROOM_CREATED'; roomCode: string; playerId: string }
   | { type: 'ROOM_JOINED'; playerId: string; players: { id: string; name: string }[] }
-  | { type: 'GAME_STATE'; state: PlayerView }
+  | { type: 'GAME_STATE'; state: PlayerView; events: GameEvent[] }
   | { type: 'GAME_OVER'; info: GameOverInfo }
   | { type: 'TOURNAMENT_UPDATE'; tournament: TournamentView }
   | { type: 'SESSION_ENDED'; tournament: TournamentView }
@@ -39,6 +41,7 @@ type AppAction =
 const initialState: AppState = {
   lobby: { screen: 'home', roomCode: null, playerId: null, players: [] },
   game: null,
+  lastEvents: [],
   gameOver: null,
   tournament: null,
   sessionEnded: false,
@@ -48,6 +51,7 @@ const initialState: AppState = {
 function reducer(state: AppState, action: AppAction): AppState {
   switch (action.type) {
     case 'ROOM_CREATED':
+      window.location.hash = action.roomCode;
       return {
         ...state,
         lobby: {
@@ -59,6 +63,7 @@ function reducer(state: AppState, action: AppAction): AppState {
         error: null,
       };
     case 'ROOM_JOINED':
+      if (state.lobby.roomCode) window.location.hash = state.lobby.roomCode;
       return {
         ...state,
         lobby: {
@@ -70,7 +75,7 @@ function reducer(state: AppState, action: AppAction): AppState {
         error: null,
       };
     case 'GAME_STATE':
-      return { ...state, game: action.state, gameOver: null, error: null };
+      return { ...state, game: action.state, lastEvents: action.events, gameOver: null, error: null };
     case 'GAME_OVER':
       return { ...state, gameOver: action.info };
     case 'TOURNAMENT_UPDATE':
@@ -84,6 +89,7 @@ function reducer(state: AppState, action: AppAction): AppState {
     case 'CLEAR_GAME_OVER':
       return { ...state, gameOver: null, game: null };
     case 'RESET':
+      window.location.hash = '';
       return initialState;
     default:
       return state;
@@ -102,7 +108,7 @@ export function useGameState(onMessage: (cb: (msg: ServerMessage) => void) => vo
         dispatch({ type: 'ROOM_JOINED', playerId: msg.playerId, players: msg.players });
         break;
       case 'GAME_STATE':
-        dispatch({ type: 'GAME_STATE', state: msg.state });
+        dispatch({ type: 'GAME_STATE', state: msg.state, events: msg.events ?? [] });
         break;
       case 'GAME_OVER':
         dispatch({
@@ -112,6 +118,7 @@ export function useGameState(onMessage: (cb: (msg: ServerMessage) => void) => vo
             loserId: msg.loserId,
             points: msg.points,
             reversed: msg.reversed,
+            hands: msg.hands,
           },
         });
         break;

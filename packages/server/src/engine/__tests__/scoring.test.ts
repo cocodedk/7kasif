@@ -126,24 +126,24 @@ describe('Tournament RoomManager', () => {
     rm.joinRoom(room.code, 'p3', 'P3');
 
     // Round 1: dealer is player index 0 (h)
-    const state1 = rm.startGame(room.code, 3);
-    expect(state1).not.toBeNull();
-    expect(state1!.dealerId).toBe('h');
+    const r1 = rm.startGame(room.code, 3);
+    expect(r1).not.toBeNull();
+    expect(r1!.state.dealerId).toBe('h');
 
     // Record round result
     rm.recordRoundResult(room.code, 'p2', 'p3', 1, false, '4', false);
 
     // Round 2: dealer rotates to player index 1 (p2)
-    const state2 = rm.startGame(room.code, 3);
-    expect(state2).not.toBeNull();
-    expect(state2!.dealerId).toBe('p2');
+    const r2 = rm.startGame(room.code, 3);
+    expect(r2).not.toBeNull();
+    expect(r2!.state.dealerId).toBe('p2');
 
     rm.recordRoundResult(room.code, 'h', 'p3', 1, false, '5', false);
 
     // Round 3: dealer rotates to player index 2 (p3)
-    const state3 = rm.startGame(room.code, 3);
-    expect(state3).not.toBeNull();
-    expect(state3!.dealerId).toBe('p3');
+    const r3 = rm.startGame(room.code, 3);
+    expect(r3).not.toBeNull();
+    expect(r3!.state.dealerId).toBe('p3');
   });
 
   it('should accumulate scores across rounds', async () => {
