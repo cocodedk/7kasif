@@ -8,6 +8,7 @@ import { WaitingRoom } from './screens/WaitingRoom.js';
 import { GameOverScreen } from './screens/GameOverScreen.js';
 import { SessionEndedScreen } from './screens/SessionEndedScreen.js';
 import { GameBoard } from './components/GameBoard.js';
+import { VictoryTransition } from './components/VictoryTransition.js';
 import { AdminScreen } from './screens/AdminScreen.js';
 import { DevPreview } from './DevPreview.js';
 
@@ -86,6 +87,14 @@ function AuthenticatedGame({
   const { send: rawSend, connected, onMessage } = useWebSocket();
   const { state, dispatch } = useGameState(onMessage);
   const [showAdmin, setShowAdmin] = useState(false);
+  const [showTransition, setShowTransition] = useState(false);
+
+  // Trigger victory transition when gameOver arrives
+  useEffect(() => {
+    if (state.gameOver) {
+      setShowTransition(true);
+    }
+  }, [state.gameOver]);
 
   // Wrap send to inject token into CREATE_ROOM and JOIN_ROOM messages
   const send = (msg: Parameters<typeof rawSend>[0]) => {
@@ -112,6 +121,24 @@ function AuthenticatedGame({
 
   // Game Over (between rounds)
   if (state.gameOver && playerId) {
+    if (showTransition) {
+      const winnerHand = state.gameOver.hands.find(h => h.playerId === state.gameOver!.winnerId);
+      const loserHand = state.gameOver.hands.find(h => h.playerId === state.gameOver!.loserId);
+      const lastCardPlayed = state.game?.topDiscard ?? null;
+      const lastPlayEvent = [...state.lastEvents].reverse().find(e => e.type === 'CARD_PLAYED');
+      const lastPlayerId = lastPlayEvent?.type === 'CARD_PLAYED' ? lastPlayEvent.playerId : null;
+      return (
+        <VictoryTransition
+          winnerName={winnerHand?.playerName ?? 'Winner'}
+          loserName={loserHand?.playerName ?? 'Loser'}
+          points={state.gameOver.points}
+          reversed={state.gameOver.reversed}
+          lastCard={lastCardPlayed}
+          winnerPlayedLast={lastPlayerId === state.gameOver.winnerId}
+          onComplete={() => setShowTransition(false)}
+        />
+      );
+    }
     return (
       <GameOverScreen
         winnerId={state.gameOver.winnerId}
