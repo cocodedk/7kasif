@@ -119,9 +119,9 @@ export function SeaCreatures() {
           className="absolute"
           style={{
             top: `${c.y}%`,
-            left: -80,
+            right: -80,
             opacity: c.opacity,
-            animation: `swim-right ${c.duration}s linear ${c.delay}s infinite`,
+            animation: `swim-left ${c.duration}s linear ${c.delay}s infinite`,
           }}
         >
           {c.content}
