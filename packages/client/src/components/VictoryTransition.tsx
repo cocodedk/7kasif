@@ -35,7 +35,12 @@ export function VictoryTransition({
   }, [onComplete]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden"
+      role="status"
+      aria-live="polite"
+      aria-label={reversed ? `Reversal! ${loserName} loses the round. ${points} points` : `${winnerName} wins the round! ${points} points`}
+    >
       <style>{`
         @keyframes vt-pulse {
           0%, 100% { opacity: 0.8; }
