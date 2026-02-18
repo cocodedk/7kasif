@@ -3,24 +3,10 @@ import { Card, CardBack } from '../Card.js';
 import { MobileHand } from './MobileHand.js';
 import { MobileOpponentHand } from './MobileOpponentHand.js';
 import { GameModals } from '../GameModals.js';
-import { useGameBoard, SUIT_SYMBOLS, type GameBoardProps, type FeedEntry } from '../../hooks/useGameBoard.js';
+import { useGameBoard, SUIT_SYMBOLS, type GameBoardProps } from '../../hooks/useGameBoard.js';
 import { useIsLandscape } from '../../hooks/useIsLandscape.js';
 import { useFullscreen } from '../../hooks/useFullscreen.js';
-
-function EventFeed({ feed, compact }: { feed: FeedEntry[]; compact?: boolean }) {
-  if (feed.length === 0) return null;
-  return (
-    <div className={`flex flex-col ${compact ? 'w-28' : 'w-36'} border-l border-gray-700 p-2 gap-1 overflow-y-auto`}>
-      <div className="text-[10px] text-gray-500 font-semibold uppercase tracking-wide mb-0.5">Activity</div>
-      {feed.map(entry => (
-        <div key={entry.id} className="flex items-start gap-1.5">
-          <span className="text-[10px] text-white font-mono shrink-0">{entry.seq}</span>
-          <span className={`text-[11px] ${entry.color} leading-tight`}>{entry.text}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
+import { EventFeed } from '../EventFeed.js';
 
 export function MobileGameBoard(props: GameBoardProps) {
   const { game, playerId, error } = props;
@@ -88,8 +74,13 @@ export function MobileGameBoard(props: GameBoardProps) {
             Choose a card to reveal!
           </div>
         )}
+        {gb.isJackDeclare && (
+          <div className="text-yellow-400 font-bold animate-pulse">
+            Choose the house suit!
+          </div>
+        )}
         <div className={gb.isMyTurn ? 'text-green-400 font-bold' : 'text-gray-500'}>
-          {gb.isMyTurn ? 'Your turn' : `Waiting for ${game.opponents.find(o => o.id === game.currentPlayerId)?.name ?? '...'}...`}
+          {gb.isMyTurn && !gb.isJackDeclare ? 'Your turn' : gb.isJackDeclare ? '' : `Waiting for ${game.opponents.find(o => o.id === game.currentPlayerId)?.name ?? '...'}...`}
         </div>
         {game.direction === -1 && (
           <div className="text-xs text-gray-500">Direction: Counter-clockwise</div>
@@ -185,6 +176,7 @@ export function MobileGameBoard(props: GameBoardProps) {
       handleChainChoice={gb.handleChainChoice}
       playedCard={gb.playedCard}
       revealCard={gb.revealCard}
+      isJackDeclare={gb.isJackDeclare}
       fullscreenBtn={fullscreenBtn}
     />
   );
