@@ -122,19 +122,21 @@ function AuthenticatedGame({
   // Game Over (between rounds)
   if (state.gameOver && playerId) {
     if (showTransition) {
-      const winnerHand = state.gameOver.hands.find(h => h.playerId === state.gameOver!.winnerId);
-      const loserHand = state.gameOver.hands.find(h => h.playerId === state.gameOver!.loserId);
-      const lastCardPlayed = state.game?.topDiscard ?? null;
-      const lastPlayEvent = [...state.lastEvents].reverse().find(e => e.type === 'CARD_PLAYED');
-      const lastPlayerId = lastPlayEvent?.type === 'CARD_PLAYED' ? lastPlayEvent.playerId : null;
+      const nameOf = (id: string) =>
+        state.gameOver!.hands.find(h => h.playerId === id)?.playerName
+        ?? state.lobby.players.find(p => p.id === id)?.name
+        ?? id;
+      const finisherName = nameOf(state.gameOver.winnerId);
+      // When reversed, the finisher loses and all others win
+      const otherNames = state.gameOver.hands.map(h => h.playerName);
       return (
         <VictoryTransition
-          winnerName={winnerHand?.playerName ?? 'Winner'}
-          loserName={loserHand?.playerName ?? 'Loser'}
+          winnerName={state.gameOver.reversed ? otherNames.join(' & ') : finisherName}
+          loserName={state.gameOver.reversed ? finisherName : nameOf(state.gameOver.loserId)}
           points={state.gameOver.points}
           reversed={state.gameOver.reversed}
-          lastCard={lastCardPlayed}
-          winnerPlayedLast={lastPlayerId === state.gameOver.winnerId}
+          lastCard={state.game?.topDiscard ?? null}
+          finishedByName={finisherName}
           onComplete={() => setShowTransition(false)}
         />
       );

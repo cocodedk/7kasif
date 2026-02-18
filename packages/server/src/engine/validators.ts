@@ -136,7 +136,7 @@ export function validatePlayCard(
   // During a 7-8-10 chain reaction
   if (state.pendingEffect?.type === 'seven-chain') {
     if (!canPlayInChain(card, state.pendingEffect, state.mode, getTopDiscard(state))) {
-      return 'During a chain reaction, you can only play 7, 8 (same suit), or 10 (same suit)';
+      return 'During a chain reaction, you can only play 7, 8, or 10 (matching suit or value)';
     }
     if (card.value === 8 && !action.chainChoice) {
       return 'Must specify chainChoice (redirect or add) when playing 8 in a chain';

@@ -8,7 +8,7 @@ interface VictoryTransitionProps {
   points: number;
   reversed: boolean;
   lastCard: CardType | null;
-  winnerPlayedLast: boolean;
+  finishedByName: string;
   onComplete: () => void;
 }
 
@@ -26,7 +26,7 @@ export function VictoryTransition({
   points,
   reversed,
   lastCard,
-  winnerPlayedLast,
+  finishedByName,
   onComplete,
 }: VictoryTransitionProps) {
   useEffect(() => {
@@ -116,36 +116,66 @@ export function VictoryTransition({
             style={{ animation: 'vt-slide-up 0.4s ease-out 0.15s both' }}
           >
             <p className="text-sm text-gray-400 mb-2">
-              {winnerPlayedLast ? winnerName : loserName} played
+              {finishedByName} played
             </p>
             <Card card={lastCard} centered width={72} />
           </div>
         )}
 
-        {/* Winner name */}
-        <div style={{ animation: 'vt-slide-up 0.5s ease-out 0.3s both' }}>
-          <h1 className="text-4xl font-bold text-yellow-300 mb-1">{winnerName}</h1>
-          <p className="text-xl text-yellow-100/80">wins the round!</p>
-        </div>
+        {reversed ? (
+          <>
+            {/* Reversal — loser first */}
+            <div style={{ animation: 'vt-slide-up 0.5s ease-out 0.3s both' }}>
+              <div className="bg-purple-500/20 text-purple-300 px-4 py-2 rounded-lg mb-3 text-sm">
+                Reversal! Tied losers became winners
+              </div>
+              <h1 className="text-3xl font-bold text-red-400 mb-1">{loserName}</h1>
+              <p className="text-lg text-red-300/70">loses the round!</p>
+            </div>
 
-        {/* Points badge */}
-        <div
-          className="mt-5 bg-yellow-500/20 border border-yellow-500/40 rounded-full px-6 py-2"
-          style={{ animation: 'vt-points-pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 1s both' }}
-        >
-          <span className="text-2xl font-bold text-yellow-300">+{points}</span>
-          <span className="text-yellow-200/70 ml-2 text-sm">points</span>
-        </div>
+            <div
+              className="mt-5 bg-red-500/20 border border-red-500/40 rounded-full px-6 py-2"
+              style={{ animation: 'vt-points-pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 1s both' }}
+            >
+              <span className="text-2xl font-bold text-red-400">−{points}</span>
+              <span className="text-red-200/70 ml-2 text-sm">points</span>
+            </div>
 
-        {/* Loser section */}
-        <div
-          className="mt-8"
-          style={{ animation: 'vt-loser-in 0.6s ease-out 2s both' }}
-        >
-          <span className="text-3xl">💀</span>
-          <p className="text-lg text-red-300/80 mt-1">{loserName}</p>
-          <p className="text-sm text-red-400/60">−{points} points</p>
-        </div>
+            <div
+              className="mt-8"
+              style={{ animation: 'vt-loser-in 0.6s ease-out 2s both' }}
+            >
+              <span className="text-3xl">🎉</span>
+              <p className="text-lg text-green-300/80 mt-1">{winnerName}</p>
+              <p className="text-sm text-green-400/60">+{points} points</p>
+            </div>
+          </>
+        ) : (
+          <>
+            {/* Normal — winner first */}
+            <div style={{ animation: 'vt-slide-up 0.5s ease-out 0.3s both' }}>
+              <h1 className="text-4xl font-bold text-yellow-300 mb-1">{winnerName}</h1>
+              <p className="text-xl text-yellow-100/80">wins the round!</p>
+            </div>
+
+            <div
+              className="mt-5 bg-yellow-500/20 border border-yellow-500/40 rounded-full px-6 py-2"
+              style={{ animation: 'vt-points-pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 1s both' }}
+            >
+              <span className="text-2xl font-bold text-yellow-300">+{points}</span>
+              <span className="text-yellow-200/70 ml-2 text-sm">points</span>
+            </div>
+
+            <div
+              className="mt-8"
+              style={{ animation: 'vt-loser-in 0.6s ease-out 2s both' }}
+            >
+              <span className="text-3xl">💀</span>
+              <p className="text-lg text-red-300/80 mt-1">{loserName}</p>
+              <p className="text-sm text-red-400/60">−{points} points</p>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
