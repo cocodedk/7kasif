@@ -12,7 +12,10 @@ interface BotState {
   hasAnnounced: boolean;
   rejectedCards: Set<string>;
   lastCurrentPlayer: string;
+  failedRetries: number;
 }
+
+const MAX_BOT_RETRIES = 5;
 
 function cardKey(c: Card): string {
   return `${c.value}:${c.suit}`;
@@ -115,7 +118,7 @@ export class BotManager {
     const stateKey = `${room.code}:${botId}`;
     let botState = this.botStates.get(stateKey);
     if (!botState) {
-      botState = { hasAnnounced: false, rejectedCards: new Set(), lastCurrentPlayer: '' };
+      botState = { hasAnnounced: false, rejectedCards: new Set(), lastCurrentPlayer: '', failedRetries: 0 };
       this.botStates.set(stateKey, botState);
     }
 
@@ -161,8 +164,14 @@ export class BotManager {
       if (fbResult.ok) {
         room.gameState = fbResult.newState;
         room.lastActivityAt = Date.now();
+        botState.failedRetries = 0;
         broadcastGameState(room.code, fbResult.events, fbStateBefore);
         this.scheduleBotTurn(room, getPlayerView, broadcastGameState, broadcastGameOver, logAction);
+      } else {
+        botState.failedRetries++;
+        if (botState.failedRetries < MAX_BOT_RETRIES) {
+          this.scheduleBotTurn(room, getPlayerView, broadcastGameState, broadcastGameOver, logAction);
+        }
       }
       return;
     }
@@ -187,7 +196,11 @@ export class BotManager {
         if (fbResult.ok) {
           room.gameState = fbResult.newState;
           room.lastActivityAt = Date.now();
+          botState.failedRetries = 0;
           broadcastGameState(room.code, fbResult.events, fbStateBefore);
+        } else {
+          botState.failedRetries++;
+          if (botState.failedRetries >= MAX_BOT_RETRIES) return;
         }
       }
       this.scheduleBotTurn(room, getPlayerView, broadcastGameState, broadcastGameOver, logAction);
@@ -196,6 +209,7 @@ export class BotManager {
 
     room.gameState = result.newState;
     room.lastActivityAt = Date.now();
+    botState.failedRetries = 0;
 
     // Check for game over
     const gameOverEvent = result.events.find(e => e.type === 'GAME_OVER');
