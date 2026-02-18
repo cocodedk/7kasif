@@ -281,5 +281,6 @@ export function applyChainCounter(
     return events;
   }
 
-  return events;
+  // Unreachable: validators reject all non-7/8/10 plays during a seven-chain
+  throw new Error(`applyChainCounter: unexpected card value "${card.value}" during seven-chain`);
 }

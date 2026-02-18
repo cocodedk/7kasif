@@ -167,9 +167,9 @@ export async function handleApiRoute(
         .map(f => {
           const stat = statSync(join(GAME_LOGS_DIR, f));
           const [roomCode] = f.split('#');
-          return { name: f, roomCode, size: stat.size, createdAt: stat.mtimeMs };
+          return { name: f, roomCode, size: stat.size, modifiedAt: stat.mtimeMs };
         })
-        .sort((a, b) => b.createdAt - a.createdAt);
+        .sort((a, b) => b.modifiedAt - a.modifiedAt);
       json(res, 200, files);
     } catch {
       json(res, 200, []);

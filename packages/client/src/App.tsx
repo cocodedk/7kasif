@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useWebSocket } from './hooks/useWebSocket.js';
 import { useGameState } from './hooks/useGameState.js';
 import { useAuth } from './hooks/useAuth.js';
@@ -88,6 +88,7 @@ function AuthenticatedGame({
   const { state, dispatch } = useGameState(onMessage);
   const [showAdmin, setShowAdmin] = useState(false);
   const [showTransition, setShowTransition] = useState(false);
+  const handleTransitionComplete = useCallback(() => setShowTransition(false), []);
 
   // Trigger victory transition when gameOver arrives
   useEffect(() => {
@@ -137,7 +138,7 @@ function AuthenticatedGame({
           reversed={state.gameOver.reversed}
           lastCard={state.game?.topDiscard ?? null}
           finishedByName={finisherName}
-          onComplete={() => setShowTransition(false)}
+          onComplete={handleTransitionComplete}
         />
       );
     }
