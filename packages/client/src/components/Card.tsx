@@ -25,13 +25,14 @@ interface CardProps {
   selected?: boolean;
   onClick?: () => void;
   small?: boolean;
+  width?: number;
   revealed?: boolean;
   playable?: boolean;
   isMyTurn?: boolean;
   centered?: boolean;
 }
 
-export function Card({ card, selected, onClick, small, revealed, playable, isMyTurn, centered }: CardProps) {
+export function Card({ card, selected, onClick, small, width, revealed, playable, isMyTurn, centered }: CardProps) {
   const valueStr = VALUE_DISPLAY[String(card.value)];
   const suitSymbol = SUIT_SYMBOLS[card.suit];
   const suitColor = SUIT_COLORS[card.suit];
@@ -42,10 +43,12 @@ export function Card({ card, selected, onClick, small, revealed, playable, isMyT
   return (
     <button
       onClick={dimmed ? undefined : onClick}
+      style={width ? { width: `${width}px` } : undefined}
       className={`
-        relative flex flex-col ${centered ? 'justify-center items-center' : 'justify-between'}
-        ${small ? 'w-10 h-14 text-xs' : 'w-14 h-20 text-sm'}
-        bg-white rounded-lg border-2 shadow-lg
+        relative flex flex-col ${centered || width ? 'justify-center items-center' : 'justify-between'}
+        ${small ? 'w-10 h-14 text-xs' : 'h-20 text-sm'}
+        ${!small && !width ? 'w-14' : ''}
+        bg-white rounded-lg border-2 shadow-lg overflow-hidden
         ${selected ? 'border-yellow-400 shadow-yellow-400/40' : glowing ? 'border-emerald-400 shadow-emerald-400/30' : 'border-gray-200'}
         ${revealed ? 'ring-2 ring-pink-400 ring-offset-1 ring-offset-gray-900' : ''}
         ${onClick && !dimmed ? 'cursor-pointer active:scale-95' : ''}
@@ -54,9 +57,9 @@ export function Card({ card, selected, onClick, small, revealed, playable, isMyT
         p-1 flex-shrink-0
       `}
     >
-      <div className={`flex flex-col ${centered ? 'items-center' : 'items-start'} leading-none ${suitColor}`}>
-        <span className={`font-extrabold ${small ? 'text-xs' : centered ? 'text-3xl' : 'text-lg'}`}>{valueStr}</span>
-        <span className={`${small ? 'text-xs' : centered ? 'text-2xl' : 'text-base'}`}>{suitSymbol}</span>
+      <div className={`flex flex-col ${centered || width ? 'items-center' : 'items-start'} leading-none ${suitColor}`}>
+        <span className={`font-extrabold ${small ? 'text-xs' : centered ? 'text-3xl' : width ? 'text-3xl' : 'text-lg'}`}>{valueStr}</span>
+        <span className={`${small ? 'text-xs' : centered ? 'text-2xl' : width ? 'text-2xl' : 'text-base'}`}>{suitSymbol}</span>
       </div>
     </button>
   );
