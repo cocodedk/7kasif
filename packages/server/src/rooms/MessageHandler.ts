@@ -85,6 +85,13 @@ export class MessageHandler {
       roomCode: room.code,
       playerId,
     } satisfies ServerMessage);
+
+    // Send ROOM_JOINED so host appears in their own player list
+    this.connections.send(playerId, {
+      type: 'ROOM_JOINED',
+      playerId,
+      players: room.players.map(p => ({ id: p.id, name: p.name })),
+    } satisfies ServerMessage);
   }
 
   private handleJoinRoom(ws: WebSocket, roomCode: string, playerName: string, token?: string): void {

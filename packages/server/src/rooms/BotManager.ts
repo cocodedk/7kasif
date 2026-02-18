@@ -3,7 +3,7 @@ import { applyAction } from '../engine/game.js';
 import { decideAction } from '../engine/bot-brain.js';
 import type { Room } from './RoomManager.js';
 
-const BOT_NAMES = ['Bot Alice', 'Bot Bob', 'Bot Charlie'];
+const BOT_NAMES = ['Alice', 'Bob', 'Charlie'];
 const BOT_IDS = ['bot_1', 'bot_2', 'bot_3'];
 
 interface BotState {
