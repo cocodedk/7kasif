@@ -80,6 +80,6 @@ describe('Seven — 7 + 7 + 8 redirect', () => {
 
     log('Verify: pendingEffect cleared, turn moves to next player');
     expect(r7.newState.pendingEffect).toBeNull();
-    expect(r7.newState.players[r7.newState.currentPlayerIndex].id).not.toBe('p3');
+    expect(r7.newState.players[r7.newState.currentPlayerIndex].id).toBe('p1');
   });
 });

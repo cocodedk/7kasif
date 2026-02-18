@@ -107,6 +107,10 @@ export function GameBoard({ game, playerId, error, send, lastEvents = [] }: Game
   const feedIdCounter = useRef(0);
   const feedSeqCounter = useRef(0);
 
+  useEffect(() => {
+    return () => clearTimeout(playedTimerRef.current);
+  }, []);
+
   // Helper to resolve player name from id
   const playerName = (id: string) =>
     id === playerId ? 'You' : (game.opponents.find(o => o.id === id)?.name ?? 'Opponent');
@@ -114,6 +118,10 @@ export function GameBoard({ game, playerId, error, send, lastEvents = [] }: Game
   // Build feed entries from server events
   useEffect(() => {
     if (lastEvents.length === 0) return;
+
+    // Local helper to resolve player name, capturing current playerId and opponents
+    const playerName = (id: string) =>
+      id === playerId ? 'You' : (game.opponents.find(o => o.id === id)?.name ?? 'Opponent');
 
     const newEntries: FeedEntry[] = [];
     for (const ev of lastEvents) {
@@ -205,7 +213,7 @@ export function GameBoard({ game, playerId, error, send, lastEvents = [] }: Game
     if (newEntries.length > 0) {
       setFeed(prev => [...newEntries, ...prev].slice(0, 12));
     }
-  }, [lastEvents]);
+  }, [lastEvents, playerId, game.opponents]);
 
   const handlePlay = () => {
     if (!selectedCard || !isMyTurn) return;

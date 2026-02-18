@@ -215,6 +215,8 @@ export class RoomManager {
       room.players = room.players.filter(p => p.id !== playerId);
       if (room.players.length === 0) {
         this.rooms.delete(code);
+      } else if (room.hostId === playerId) {
+        room.hostId = room.players[0].id;
       }
     }
   }

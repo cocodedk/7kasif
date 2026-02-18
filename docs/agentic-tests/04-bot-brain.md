@@ -24,7 +24,7 @@ The bot plays sensibly but not optimally. This is for testing and game progressi
 
 ### Turn Decision Flowchart
 
-```
+```text
 Is it my turn? (currentPlayerId === myPlayerId)
   ├── NO → return null, wait
   └── YES → evaluate state:
@@ -78,130 +78,7 @@ When choosing which playable card to play, the bot uses this priority (highest f
 
 Create: `packages/server/src/__tests__/bots/bot-brain.ts`
 
-```typescript
-import type { PlayerView, Action, Card, Suit } from '@hafte-kasif/shared';
-import { isCardPlayable } from '@hafte-kasif/shared';
-
-export function decideAction(
-  view: PlayerView,
-  myPlayerId: string,
-  hasDrawnThisTurn: boolean
-): Action | null {
-  // Not my turn
-  if (view.currentPlayerId !== myPlayerId) {
-    return null;
-  }
-
-  const playableCards = view.myHand.filter((card) =>
-    isCardPlayable(card, view)
-  );
-
-  if (playableCards.length > 0) {
-    // Pick the best card to play
-    const card = pickBestCard(playableCards, view);
-    return buildPlayAction(card, view);
-  }
-
-  // No playable cards
-  if (!hasDrawnThisTurn) {
-    return { type: 'DRAW_CARD' };
-  }
-
-  // Already drew, must pass (unless forced to draw more)
-  if (view.pendingEffect?.type === 'seven-chain') {
-    // In 7-chain with no valid cards, must draw the penalty
-    return { type: 'DRAW_CARD' };
-  }
-
-  return { type: 'PASS_TURN' };
-}
-
-function pickBestCard(playable: Card[], view: PlayerView): Card {
-  // Simple priority: prefer cards that create effects
-  const priority = (c: Card): number => {
-    if (c.value === 'jack') return 10;
-    if (c.value === 'ace') return 7;
-    if (c.value === 7) return 8;
-    if (c.value === 10) return 6;
-    if (c.value === 'king') return 5;
-    if (c.value === 'queen') return 4;
-    if (c.value === 2) return 3;
-    return 1;
-  };
-
-  // Sort by priority descending, pick first
-  playable.sort((a, b) => priority(b) - priority(a));
-  return playable[0];
-}
-
-function buildPlayAction(card: Card, view: PlayerView): Action {
-  const action: any = { type: 'PLAY_CARD', card };
-
-  // Jack needs declaredSuit
-  if (card.value === 'jack') {
-    action.declaredSuit = pickBestSuit(view.myHand, card);
-  }
-
-  // 2 needs giveCard (if more than 1 card in hand)
-  if (card.value === 2 && view.myHand.length > 1) {
-    const otherCards = view.myHand.filter(
-      (c) => !(c.suit === card.suit && c.value === card.value)
-    );
-    if (otherCards.length > 0) {
-      // Give the highest value card (minimize point loss)
-      action.giveCard = otherCards.sort(
-        (a, b) => cardNumericValue(b) - cardNumericValue(a)
-      )[0];
-    }
-  }
-
-  // 8 in chain needs chainChoice
-  if (card.value === 8 && view.pendingEffect?.type === 'seven-chain') {
-    action.chainChoice = 'redirect';
-  }
-
-  return action;
-}
-
-function pickBestSuit(hand: Card[], excludeCard: Card): Suit {
-  const counts: Record<Suit, number> = {
-    hearts: 0,
-    diamonds: 0,
-    clubs: 0,
-    spades: 0,
-  };
-
-  for (const c of hand) {
-    if (c.suit === excludeCard.suit && c.value === excludeCard.value) {
-      continue;
-    }
-    counts[c.suit]++;
-  }
-
-  // Pick suit with most cards
-  return (Object.entries(counts) as [Suit, number][])
-    .sort((a, b) => b[1] - a[1])[0][0];
-}
-
-function cardNumericValue(card: Card): number {
-  const vals: Record<string, number> = {
-    '2': 2,
-    '3': 3,
-    '4': 4,
-    '5': 5,
-    '6': 6,
-    '7': 7,
-    '8': 8,
-    '9': 9,
-    '10': 10,
-    jack: 11,
-    queen: 12,
-    king: 13,
-    ace: 14,
-  };
-  return vals[String(card.value)] || 0;
-}
-```
+See the authoritative implementation: [`packages/server/src/__tests__/bots/bot-brain.ts`](../../packages/server/src/__tests__/bots/bot-brain.ts)
 
 ## Key Behaviors
 

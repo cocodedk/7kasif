@@ -46,7 +46,7 @@ export function OpponentHand({ opponent, isCurrentTurn, isNext, onChallenge }: O
       {opponent.revealedCards.length > 0 && (
         <div className="flex gap-0.5 flex-wrap justify-center">
           {opponent.revealedCards.map((card, i) => (
-            <Card key={i} card={card} small revealed />
+            <Card key={`${card.value}-${card.suit}-${i}`} card={card} small revealed />
           ))}
         </div>
       )}
@@ -54,8 +54,9 @@ export function OpponentHand({ opponent, isCurrentTurn, isNext, onChallenge }: O
       {/* Challenge button */}
       {showChallenge && onChallenge && (
         <button
+          type="button"
           onClick={onChallenge}
-          className="text-[10px] bg-red-600 px-2 py-0.5 rounded active:bg-red-700"
+          className="text-[10px] bg-red-600 text-white px-2 py-0.5 rounded hover:bg-red-700 active:bg-red-700"
         >
           Challenge!
         </button>

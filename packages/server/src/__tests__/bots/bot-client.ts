@@ -6,6 +6,7 @@ type MessageHandler = (msg: ServerMessage) => void;
 export class BotClient {
   private ws: WebSocket | null = null;
   private handlers: MessageHandler[] = [];
+  private pendingWaiters: Array<(err: Error) => void> = [];
   private name: string;
 
   constructor(name: string) {
@@ -20,9 +21,13 @@ export class BotClient {
         resolve();
       });
       this.ws.on('message', (data) => {
-        const msg: ServerMessage = JSON.parse(data.toString());
-        for (const handler of this.handlers) {
-          handler(msg);
+        try {
+          const msg: ServerMessage = JSON.parse(data.toString());
+          for (const handler of this.handlers) {
+            handler(msg);
+          }
+        } catch (err) {
+          console.error(`[${this.name}] Message handling error:`, err);
         }
       });
       this.ws.on('error', (err) => {
@@ -31,6 +36,12 @@ export class BotClient {
       });
       this.ws.on('close', () => {
         console.log(`[${this.name}] Disconnected`);
+        const err = new Error(`[${this.name}] WebSocket closed`);
+        for (const reject of this.pendingWaiters) {
+          reject(err);
+        }
+        this.pendingWaiters = [];
+        this.handlers = [];
       });
     });
   }
@@ -60,21 +71,26 @@ export class BotClient {
         if (msg.type === type) {
           clearTimeout(timer);
           this.handlers = this.handlers.filter((h) => h !== handler);
+          this.pendingWaiters = this.pendingWaiters.filter((r) => r !== reject);
           resolve(msg as Extract<ServerMessage, { type: T }>);
         }
       };
 
       const timer = setTimeout(() => {
         this.handlers = this.handlers.filter((h) => h !== handler);
+        this.pendingWaiters = this.pendingWaiters.filter((r) => r !== reject);
         reject(new Error(`[${this.name}] Timeout waiting for ${type}`));
       }, timeoutMs);
 
       this.handlers.push(handler);
+      this.pendingWaiters.push(reject);
     });
   }
 
   close(): void {
     this.ws?.close();
     this.ws = null;
+    this.pendingWaiters = [];
+    this.handlers = [];
   }
 }

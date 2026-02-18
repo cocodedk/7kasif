@@ -294,8 +294,10 @@ export class BotRunner {
     console.log(`START_GAME sent. Playing ${rounds} round${rounds > 1 ? 's' : ''}...`);
 
     // Wait for all rounds to complete, then stop
-    await done;
-    this.stop();
+    const timeout = new Promise<void>((_, reject) =>
+      setTimeout(() => reject(new Error('startAutonomous timed out')), 5 * 60 * 1000)
+    );
+    await Promise.race([done, timeout]).finally(() => this.stop());
   }
 
   stop(): void {

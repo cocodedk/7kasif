@@ -23,7 +23,7 @@ export class MessageHandler {
     }
 
     const playerId = this.connections.getPlayerIdByWs(ws);
-    console.log(`[MSG] type=${msg.type} playerId=${playerId || 'NONE'}`);
+    if (process.env.DEBUG_GAME_LOG) console.log(`[MSG] type=${msg.type} playerId=${playerId || 'NONE'}`);
 
     switch (msg.type) {
       case 'CREATE_ROOM':
@@ -54,7 +54,7 @@ export class MessageHandler {
     if (token) {
       try {
         const decoded = verifyToken(token);
-        console.log(`[AUTH] verified userId=${decoded.userId}`);
+        if (process.env.DEBUG_GAME_LOG) console.log(`[AUTH] verified userId=${decoded.userId}`);
         return { playerId: `user_${decoded.userId}`, userId: decoded.userId };
       } catch (err: any) {
         console.error(`[AUTH] verifyToken failed:`, err.message);

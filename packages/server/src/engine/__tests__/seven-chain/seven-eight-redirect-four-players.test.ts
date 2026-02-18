@@ -79,7 +79,7 @@ describe('Seven — 8 redirect with four players', () => {
     expect(r1.ok).toBe(true);
     if (!r1.ok) return;
 
-    log('p3 plays 7♦ to continue chain (penalty stays +2)');
+    log('p3 plays 7♦ to continue chain (penalty increases to +4)');
     const r2 = applyAction(r1.newState, 'p3', { type: 'PLAY_CARD', card: c('7d') });
     expect(r2.ok).toBe(true);
     if (!r2.ok) return;
