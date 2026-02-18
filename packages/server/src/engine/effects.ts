@@ -107,7 +107,11 @@ function applyRevealCard(state: GameState, playerId: string, action: RevealCardA
 
 function applyDeclareSuit(state: GameState, _playerId: string, action: DeclareSuitAction): GameEvent[] {
   const events: GameEvent[] = [];
-  // Set the declared suit via lastAction so getDeclaredSuit / getEffectiveHouse work
+  // Store a synthetic PLAY_CARD lastAction referencing the Jack already on the
+  // discard pile. getDeclaredSuit() and getEffectiveHouse() both inspect
+  // lastAction.card.value === 'jack' + lastAction.declaredSuit to determine the
+  // active house, so this is the simplest way to satisfy those checks without
+  // a dedicated state field.
   const topDiscard = state.discardPile[state.discardPile.length - 1];
   state.lastAction = {
     type: 'PLAY_CARD',

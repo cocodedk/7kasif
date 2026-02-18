@@ -288,6 +288,8 @@ export function validateRevealCard(
   return null;
 }
 
+const VALID_SUITS: ReadonlySet<string> = new Set(['hearts', 'diamonds', 'clubs', 'spades']);
+
 export function validateDeclareSuit(
   state: GameState,
   playerId: string,
@@ -298,6 +300,9 @@ export function validateDeclareSuit(
   }
   if (state.pendingEffect?.type !== 'jack-declare') {
     return 'No suit declaration pending';
+  }
+  if (!VALID_SUITS.has(action.suit)) {
+    return 'Invalid suit';
   }
   return null;
 }

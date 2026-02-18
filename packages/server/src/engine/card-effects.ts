@@ -47,6 +47,9 @@ export function applyPlayCard(state: GameState, playerId: string, action: PlayCa
     } else {
       // Non-Ace card ends the Ace chain
       const acesPlayed = state.pendingEffect.acesPlayed;
+      // Clear pendingEffect first so calculateGameEnd sees a clean state, then
+      // temporarily restore it if all 4 aces were played so scoring can detect
+      // the full-ace-chain bonus.
       state.pendingEffect = null;
       // Check win
       if (player.hand.length === 0) {

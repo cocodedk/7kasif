@@ -56,6 +56,8 @@ export type ClientMessage =
 
 // ─── Server Messages ───
 
+export type PlayerInfo = { id: string; name: string };
+
 export interface RoomCreatedMessage {
   type: 'ROOM_CREATED';
   roomCode: string;
@@ -65,7 +67,7 @@ export interface RoomCreatedMessage {
 export interface RoomJoinedMessage {
   type: 'ROOM_JOINED';
   playerId: string;
-  players: { id: string; name: string }[];
+  players: PlayerInfo[];
 }
 
 export interface GameStateMessage {
@@ -104,7 +106,7 @@ export interface DebugGameInitMessage {
   dealerId: string;
   cardsPerPlayer: number;
   mode: GameMode;
-  players: { id: string; name: string }[];
+  players: PlayerInfo[];
 }
 
 export type ServerMessage =

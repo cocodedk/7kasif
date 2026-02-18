@@ -10,7 +10,7 @@ export function recordRoundResult(
   reversed: boolean,
   finishingCardValue: string,
   isAceChainFull: boolean,
-): TournamentView | null {
+): TournamentView {
   const roundResult: RoundResult = {
     roundNumber: room.tournament.rounds.length + 1,
     winnerId,
@@ -57,12 +57,12 @@ export function recordRoundResult(
   return getTournamentView(room);
 }
 
-export function endSession(room: Room): TournamentView | null {
+export function endSession(room: Room): TournamentView {
   room.tournament.isActive = false;
   return getTournamentView(room);
 }
 
-export function getTournamentView(room: Room): TournamentView | null {
+export function getTournamentView(room: Room): TournamentView {
   return {
     sessionId: room.tournament.id,
     createdAt: room.tournament.createdAt,

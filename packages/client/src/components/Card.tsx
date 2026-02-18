@@ -46,8 +46,8 @@ export function Card({ card, selected, onClick, small, width, revealed, playable
       `}
     >
       <div className={`flex flex-col ${centered || width ? 'items-center' : 'items-start'} leading-none ${suitColor}`}>
-        <span className={`font-extrabold ${small ? 'text-xs' : centered ? 'text-3xl' : width ? 'text-3xl' : 'text-lg'}`}>{valueStr}</span>
-        <span className={`${small ? 'text-xs' : centered ? 'text-2xl' : width ? 'text-2xl' : 'text-base'}`}>{suitSymbol}</span>
+        <span className={`font-extrabold ${small ? 'text-xs' : centered || width ? 'text-3xl' : 'text-lg'}`}>{valueStr}</span>
+        <span className={`${small ? 'text-xs' : centered || width ? 'text-2xl' : 'text-base'}`}>{suitSymbol}</span>
       </div>
     </button>
   );
