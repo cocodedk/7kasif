@@ -4,7 +4,7 @@
   "description": "Persian-Danish card game - play online with friends",
   "start_url": "/",
   "display": "standalone",
-  "orientation": "portrait",
+  "orientation": "any",
   "background_color": "#1a1a2e",
   "theme_color": "#1a1a2e",
   "icons": [

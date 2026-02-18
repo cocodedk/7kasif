@@ -1,5 +1,6 @@
 import type { Card as CardType, Suit, Value } from '@hafte-kasif/shared';
 import { Card } from './Card.js';
+import { SUIT_SYMBOLS } from '../utils/cardFormat.js';
 
 function suitRank(suit: Suit): number {
   if (suit === 'hearts') return 0;
@@ -20,10 +21,6 @@ function valueRank(value: Value): number {
 function cardSortKey(card: CardType): number {
   return suitRank(card.suit) * 100 + valueRank(card.value);
 }
-
-const SUIT_SYMBOLS: Record<Suit, string> = {
-  hearts: '\u2665', diamonds: '\u2666', clubs: '\u2663', spades: '\u2660',
-};
 
 const SUIT_COLORS: Record<Suit, string> = {
   hearts: 'text-red-400', diamonds: 'text-red-400', clubs: 'text-gray-300', spades: 'text-gray-300',

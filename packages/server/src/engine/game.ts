@@ -137,14 +137,8 @@ function applyFirstCardEffects(state: GameState, dealerIndex: number, card: Card
     }
     case 'jack': {
       // Dealer chooses house — set dealer as current to make the choice
-      // For initial flip, we'll need the dealer to declare suit
       state.currentPlayerIndex = dealerIndex;
-      // Mark that dealer needs to declare suit (using lastAction as a signal)
-      state.lastAction = {
-        type: 'PLAY_CARD',
-        card,
-        declaredSuit: undefined, // dealer needs to choose
-      };
+      state.pendingEffect = { type: 'jack-declare' };
       break;
     }
     case 'queen': {

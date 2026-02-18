@@ -1,16 +1,21 @@
 import type { WebSocket } from 'ws';
-import type { ClientMessage, ServerMessage, Action } from '@hafte-kasif/shared';
+import type { ClientMessage, ServerMessage, Action, GameEvent, GameState, GameOverEvent } from '@hafte-kasif/shared';
 import { FINISH_POINTS } from '@hafte-kasif/shared';
 import { ConnectionManager } from './ConnectionManager.js';
-import { RoomManager } from './RoomManager.js';
+import { RoomManager, type Room } from './RoomManager.js';
+import { BotManager } from './BotManager.js';
 import { applyAction } from '../engine/game.js';
 import { filterEventsForPlayer } from '../engine/view.js';
 import { verifyToken } from '../auth/auth.js';
+import { GameLogger } from '../logging/game-logger.js';
 
 export class MessageHandler {
+  private loggers = new Map<string, GameLogger>();
+
   constructor(
     private connections: ConnectionManager,
     private rooms: RoomManager,
+    private botManager: BotManager,
   ) {}
 
   handleMessage(ws: WebSocket, raw: string): void {
@@ -44,6 +49,9 @@ export class MessageHandler {
       case 'END_SESSION':
         if (playerId) this.handleEndSession(playerId);
         break;
+      case 'ADD_BOTS':
+        if (playerId) this.handleAddBots(playerId, msg.count);
+        break;
     }
   }
 
@@ -63,6 +71,83 @@ export class MessageHandler {
     return null;
   }
 
+  private validateHostAction(playerId: string, actionLabel: string): Room | null {
+    const room = this.rooms.getRoomByPlayerId(playerId);
+    if (!room) return null;
+    if (room.hostId !== playerId) {
+      this.connections.send(playerId, {
+        type: 'MOVE_REJECTED',
+        reason: `Only the host can ${actionLabel}`,
+      });
+      return null;
+    }
+    return room;
+  }
+
+  private broadcastDebugGameInit(room: Room, result: { deck: any[]; state: GameState }, cardsPerPlayer: number): void {
+    // Server-side game logging
+    const logger = new GameLogger(room.code);
+    this.loggers.set(room.code, logger);
+    logger.logInit(
+      result.state,
+      result.deck,
+      room.players.map(p => ({ id: p.id, name: p.name })),
+      room.mode,
+      cardsPerPlayer,
+      result.state.dealerId,
+    );
+
+    if (!process.env.DEBUG_GAME_LOG) return;
+    for (const p of room.players) {
+      this.connections.send(p.id, {
+        type: 'DEBUG_GAME_INIT',
+        deck: result.deck,
+        dealerId: result.state.dealerId,
+        cardsPerPlayer,
+        mode: room.mode,
+        players: room.players.map(pp => ({ id: pp.id, name: pp.name })),
+      } satisfies ServerMessage);
+    }
+  }
+
+  private processGameOver(room: Room, events: GameEvent[], newState: GameState): void {
+    const gameOverEvent = events.find((e): e is GameOverEvent => e.type === 'GAME_OVER');
+    if (!gameOverEvent) return;
+
+    const logger = this.loggers.get(room.code);
+    if (logger) {
+      logger.logGameOver(gameOverEvent.winnerId, gameOverEvent.loserId, gameOverEvent.points, gameOverEvent.reversed, newState);
+      this.loggers.delete(room.code);
+    }
+
+    const finishingCard = newState.finishingCard;
+    const finishingValue = finishingCard ? String(finishingCard.value) : 'unknown';
+    const isAceChainFull = gameOverEvent.points === FINISH_POINTS.ace_chain_full;
+
+    this.rooms.recordRoundResult(
+      room.code,
+      gameOverEvent.winnerId,
+      gameOverEvent.loserId,
+      gameOverEvent.points,
+      gameOverEvent.reversed,
+      finishingValue,
+      isAceChainFull,
+    );
+
+    for (const p of room.players) {
+      this.connections.send(p.id, {
+        type: 'GAME_OVER',
+        winnerId: gameOverEvent.winnerId,
+        loserId: gameOverEvent.loserId,
+        points: gameOverEvent.points,
+        reversed: gameOverEvent.reversed,
+        hands: gameOverEvent.hands,
+      } satisfies ServerMessage);
+    }
+
+    this.broadcastTournamentUpdate(room.code);
+  }
+
   private handleCreateRoom(ws: WebSocket, playerName: string, mode: any, token?: string): void {
     const resolved = this.resolvePlayerId(token);
     if (!resolved) {
@@ -79,6 +164,13 @@ export class MessageHandler {
       type: 'ROOM_CREATED',
       roomCode: room.code,
       playerId,
+    } satisfies ServerMessage);
+
+    // Send ROOM_JOINED so host appears in their own player list
+    this.connections.send(playerId, {
+      type: 'ROOM_JOINED',
+      playerId,
+      players: room.players.map(p => ({ id: p.id, name: p.name })),
     } satisfies ServerMessage);
   }
 
@@ -120,15 +212,8 @@ export class MessageHandler {
   }
 
   private handleStartGame(playerId: string, cardsPerPlayer: number): void {
-    const room = this.rooms.getRoomByPlayerId(playerId);
+    const room = this.validateHostAction(playerId, 'start the game');
     if (!room) return;
-    if (room.hostId !== playerId) {
-      this.connections.send(playerId, {
-        type: 'MOVE_REJECTED',
-        reason: 'Only the host can start the game',
-      });
-      return;
-    }
 
     const result = this.rooms.startGame(room.code, cardsPerPlayer);
     if (!result) {
@@ -139,22 +224,10 @@ export class MessageHandler {
       return;
     }
 
-    // Send debug game init info (env-gated)
-    if (process.env.DEBUG_GAME_LOG) {
-      for (const p of room.players) {
-        this.connections.send(p.id, {
-          type: 'DEBUG_GAME_INIT',
-          deck: result.deck,
-          dealerId: result.state.dealerId,
-          cardsPerPlayer,
-          mode: room.mode,
-          players: room.players.map(pp => ({ id: pp.id, name: pp.name })),
-        } satisfies import('@hafte-kasif/shared').ServerMessage);
-      }
-    }
-
+    this.broadcastDebugGameInit(room, result, cardsPerPlayer);
     this.broadcastGameState(room.code);
     this.broadcastTournamentUpdate(room.code);
+    this.triggerBotTurn(room.code);
   }
 
   private handlePlayerAction(playerId: string, action: Action): void {
@@ -170,6 +243,8 @@ export class MessageHandler {
     const stateBefore = room.gameState;
     const result = applyAction(room.gameState, playerId, action);
 
+    this.loggers.get(room.code)?.logAction(playerId, action, stateBefore, result);
+
     if (!result.ok) {
       this.connections.send(playerId, {
         type: 'MOVE_REJECTED',
@@ -183,48 +258,17 @@ export class MessageHandler {
 
     this.broadcastGameState(room.code, result.events, stateBefore);
 
-    // Check for game over — record round result in tournament
-    const gameOverEvent = result.events.find(e => e.type === 'GAME_OVER');
-    if (gameOverEvent && gameOverEvent.type === 'GAME_OVER') {
-      const finishingCard = result.newState.finishingCard;
-      const finishingValue = finishingCard ? String(finishingCard.value) : 'unknown';
-      const isAceChainFull = gameOverEvent.points === FINISH_POINTS.ace_chain_full;
-
-      this.rooms.recordRoundResult(
-        room.code,
-        gameOverEvent.winnerId,
-        gameOverEvent.loserId,
-        gameOverEvent.points,
-        gameOverEvent.reversed,
-        finishingValue,
-        isAceChainFull,
-      );
-
-      for (const p of room.players) {
-        this.connections.send(p.id, {
-          type: 'GAME_OVER',
-          winnerId: gameOverEvent.winnerId,
-          loserId: gameOverEvent.loserId,
-          points: gameOverEvent.points,
-          reversed: gameOverEvent.reversed,
-          hands: gameOverEvent.hands,
-        } satisfies ServerMessage);
-      }
-
-      this.broadcastTournamentUpdate(room.code);
+    const hasGameOver = result.events.some(e => e.type === 'GAME_OVER');
+    if (hasGameOver) {
+      this.processGameOver(room, result.events, result.newState);
+    } else {
+      this.triggerBotTurn(room.code);
     }
   }
 
   private handleNextRound(playerId: string, cardsPerPlayer: number): void {
-    const room = this.rooms.getRoomByPlayerId(playerId);
+    const room = this.validateHostAction(playerId, 'start the next round');
     if (!room) return;
-    if (room.hostId !== playerId) {
-      this.connections.send(playerId, {
-        type: 'MOVE_REJECTED',
-        reason: 'Only the host can start the next round',
-      });
-      return;
-    }
 
     const result = this.rooms.startGame(room.code, cardsPerPlayer);
     if (!result) {
@@ -235,34 +279,16 @@ export class MessageHandler {
       return;
     }
 
-    // Send debug game init info (env-gated)
-    if (process.env.DEBUG_GAME_LOG) {
-      for (const p of room.players) {
-        this.connections.send(p.id, {
-          type: 'DEBUG_GAME_INIT',
-          deck: result.deck,
-          dealerId: result.state.dealerId,
-          cardsPerPlayer,
-          mode: room.mode,
-          players: room.players.map(pp => ({ id: pp.id, name: pp.name })),
-        } satisfies import('@hafte-kasif/shared').ServerMessage);
-      }
-    }
-
+    this.broadcastDebugGameInit(room, result, cardsPerPlayer);
     this.broadcastGameState(room.code);
     this.broadcastTournamentUpdate(room.code);
+    this.botManager.resetRoomBotStates(room.code);
+    this.triggerBotTurn(room.code);
   }
 
   private handleEndSession(playerId: string): void {
-    const room = this.rooms.getRoomByPlayerId(playerId);
+    const room = this.validateHostAction(playerId, 'end the session');
     if (!room) return;
-    if (room.hostId !== playerId) {
-      this.connections.send(playerId, {
-        type: 'MOVE_REJECTED',
-        reason: 'Only the host can end the session',
-      });
-      return;
-    }
 
     const tournament = this.rooms.endSession(room.code);
     if (tournament) {
@@ -275,7 +301,58 @@ export class MessageHandler {
     }
   }
 
-  private broadcastGameState(roomCode: string, events?: import('@hafte-kasif/shared').GameEvent[], stateBefore?: import('@hafte-kasif/shared').GameState): void {
+  private handleAddBots(playerId: string, count: number): void {
+    const room = this.validateHostAction(playerId, 'add bots');
+    if (!room) return;
+
+    if (room.gameState) {
+      this.connections.send(playerId, {
+        type: 'MOVE_REJECTED',
+        reason: 'Cannot add bots during a game',
+      });
+      return;
+    }
+    if (count < 1 || count > 3) {
+      this.connections.send(playerId, {
+        type: 'MOVE_REJECTED',
+        reason: 'Bot count must be 1-3',
+      });
+      return;
+    }
+    if (room.players.length + count > 4) {
+      this.connections.send(playerId, {
+        type: 'MOVE_REJECTED',
+        reason: 'Too many players (max 4)',
+      });
+      return;
+    }
+
+    this.botManager.addBots(room, count);
+
+    // Broadcast updated player list to all human players
+    for (const p of room.players) {
+      this.connections.send(p.id, {
+        type: 'ROOM_JOINED',
+        playerId: p.id,
+        players: room.players.map(pp => ({ id: pp.id, name: pp.name })),
+      } satisfies ServerMessage);
+    }
+  }
+
+  private triggerBotTurn(roomCode: string): void {
+    const room = this.rooms.getRoom(roomCode);
+    if (!room) return;
+
+    this.botManager.scheduleBotTurn(
+      room,
+      (state, playerId) => this.rooms.getPlayerView(state, playerId),
+      (code, events, stateBefore) => this.broadcastGameState(code, events, stateBefore),
+      (r, events, state) => this.processGameOver(r, events, state),
+      (playerId, action, stateBefore, result) => this.loggers.get(roomCode)?.logAction(playerId, action, stateBefore, result),
+    );
+  }
+
+  private broadcastGameState(roomCode: string, events?: GameEvent[], stateBefore?: GameState): void {
     const room = this.rooms.getRoom(roomCode);
     if (!room || !room.gameState) return;
 

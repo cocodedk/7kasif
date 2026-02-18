@@ -1,6 +1,6 @@
 import { BotClient } from './bot-client.js';
 import { createBotCredentials, type BotCredentials } from './bot-auth.js';
-import { decideAction } from './bot-brain.js';
+import { decideAction } from '../../engine/bot-brain.js';
 import { GameLogger } from './game-logger.js';
 import type { PlayerView, ServerMessage, Card, Action, TournamentView } from '@hafte-kasif/shared';
 

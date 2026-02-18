@@ -15,6 +15,11 @@ export function decideAction(
     return null;
   }
 
+  // During jack-declare: pick best suit from hand
+  if (view.pendingEffect?.type === 'jack-declare') {
+    return { type: 'DECLARE_SUIT', suit: pickBestSuit(view.myHand) };
+  }
+
   // During queen-reveal: pick the least valuable card to reveal
   if (view.pendingEffect?.type === 'queen-reveal' &&
       view.pendingEffect.targetPlayerId === myPlayerId) {
@@ -118,7 +123,7 @@ function buildPlayAction(card: Card, view: PlayerView): Action {
   return action;
 }
 
-function pickBestSuit(hand: Card[], excludeCard: Card): Suit {
+function pickBestSuit(hand: Card[], excludeCard?: Card): Suit {
   const counts: Record<Suit, number> = {
     hearts: 0,
     diamonds: 0,
@@ -127,7 +132,7 @@ function pickBestSuit(hand: Card[], excludeCard: Card): Suit {
   };
 
   for (const c of hand) {
-    if (c.suit === excludeCard.suit && c.value === excludeCard.value) continue;
+    if (excludeCard && c.suit === excludeCard.suit && c.value === excludeCard.value) continue;
     counts[c.suit]++;
   }
 

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useWebSocket } from './hooks/useWebSocket.js';
 import { useGameState } from './hooks/useGameState.js';
 import { useAuth } from './hooks/useAuth.js';
@@ -8,6 +8,7 @@ import { WaitingRoom } from './screens/WaitingRoom.js';
 import { GameOverScreen } from './screens/GameOverScreen.js';
 import { SessionEndedScreen } from './screens/SessionEndedScreen.js';
 import { GameBoard } from './components/GameBoard.js';
+import { VictoryTransition } from './components/VictoryTransition.js';
 import { AdminScreen } from './screens/AdminScreen.js';
 import { DevPreview } from './DevPreview.js';
 
@@ -86,6 +87,15 @@ function AuthenticatedGame({
   const { send: rawSend, connected, onMessage } = useWebSocket();
   const { state, dispatch } = useGameState(onMessage);
   const [showAdmin, setShowAdmin] = useState(false);
+  const [showTransition, setShowTransition] = useState(false);
+  const handleTransitionComplete = useCallback(() => setShowTransition(false), []);
+
+  // Trigger victory transition when gameOver arrives
+  useEffect(() => {
+    if (state.gameOver) {
+      setShowTransition(true);
+    }
+  }, [state.gameOver]);
 
   // Wrap send to inject token into CREATE_ROOM and JOIN_ROOM messages
   const send = (msg: Parameters<typeof rawSend>[0]) => {
@@ -112,6 +122,26 @@ function AuthenticatedGame({
 
   // Game Over (between rounds)
   if (state.gameOver && playerId) {
+    if (showTransition) {
+      const nameOf = (id: string) =>
+        state.gameOver!.hands.find(h => h.playerId === id)?.playerName
+        ?? state.lobby.players.find(p => p.id === id)?.name
+        ?? id;
+      const finisherName = nameOf(state.gameOver.winnerId);
+      // When reversed, the finisher loses and all others win
+      const otherNames = state.gameOver.hands.map(h => h.playerName);
+      return (
+        <VictoryTransition
+          winnerName={state.gameOver.reversed ? otherNames.join(' & ') : finisherName}
+          loserName={state.gameOver.reversed ? finisherName : nameOf(state.gameOver.loserId)}
+          points={state.gameOver.points}
+          reversed={state.gameOver.reversed}
+          lastCard={state.game?.topDiscard ?? null}
+          finishedByName={finisherName}
+          onComplete={handleTransitionComplete}
+        />
+      );
+    }
     return (
       <GameOverScreen
         winnerId={state.gameOver.winnerId}

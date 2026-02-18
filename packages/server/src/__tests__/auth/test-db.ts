@@ -13,7 +13,7 @@ export function getTestPool(): pg.Pool {
     testPool = new Pool({
       connectionString:
         process.env.DATABASE_URL ||
-        'postgresql://hk:testpass@localhost:5432/hafte_kasif_test',
+        'postgresql://hk:devpass@localhost:5432/hafte_kasif_test',
     });
   }
   return testPool;

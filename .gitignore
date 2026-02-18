@@ -3,3 +3,4 @@ dist/
 *.tsbuildinfo
 .env
 deploy/.db_password
+data/

@@ -14,6 +14,7 @@ vi.mock('../auth/auth.js', () => ({
 
 import { ConnectionManager } from '../rooms/ConnectionManager.js';
 import { RoomManager } from '../rooms/RoomManager.js';
+import { BotManager } from '../rooms/BotManager.js';
 import { MessageHandler } from '../rooms/MessageHandler.js';
 import type { ServerMessage, ClientMessage } from '@hafte-kasif/shared';
 
@@ -28,7 +29,7 @@ function createTestServer(): Promise<number> {
   return new Promise((resolve) => {
     connections = new ConnectionManager();
     rooms = new RoomManager();
-    handler = new MessageHandler(connections, rooms);
+    handler = new MessageHandler(connections, rooms, new BotManager({ actionDelayMs: 0 }));
 
     httpServer = createServer();
     wss = new WebSocketServer({ server: httpServer, path: '/ws' });
@@ -247,6 +248,141 @@ describe('Server Integration', () => {
 
     host.ws.close();
     p2.ws.close();
+  });
+});
+
+describe('Add Bots', () => {
+  beforeAll(async () => {
+    port = await createTestServer();
+  });
+
+  afterAll(() => {
+    wss.close();
+    httpServer.close();
+  });
+
+  it('should add bots and include them in player list', async () => {
+    const host = await createClient(port);
+    sendMsg(host.ws, { type: 'CREATE_ROOM', playerName: 'Alice', mode: 'standard', token: nextToken() });
+    const created = await waitForMessage(host.messages, 'ROOM_CREATED') as any;
+
+    // Host should receive ROOM_JOINED with themselves
+    const initialJoin = await waitForMessage(host.messages, 'ROOM_JOINED') as any;
+    expect(initialJoin.players).toHaveLength(1);
+
+    // Add 2 bots
+    const msgCount = host.messages.length;
+    sendMsg(host.ws, { type: 'ADD_BOTS', count: 2 });
+    const updated = await waitForMessage(host.messages, 'ROOM_JOINED', msgCount) as any;
+
+    expect(updated.players).toHaveLength(3);
+    expect(updated.players[1].id).toMatch(/^bot_/);
+    expect(updated.players[2].id).toMatch(/^bot_/);
+
+    host.ws.close();
+  });
+
+  it('should reject adding bots when room would exceed 4 players', async () => {
+    const host = await createClient(port);
+    sendMsg(host.ws, { type: 'CREATE_ROOM', playerName: 'Alice', mode: 'standard', token: nextToken() });
+    const created = await waitForMessage(host.messages, 'ROOM_CREATED') as any;
+
+    // Add 3 bots (total 4)
+    let msgCount = host.messages.length;
+    sendMsg(host.ws, { type: 'ADD_BOTS', count: 3 });
+    await waitForMessage(host.messages, 'ROOM_JOINED', msgCount);
+
+    // Try adding another bot (would be 5)
+    msgCount = host.messages.length;
+    sendMsg(host.ws, { type: 'ADD_BOTS', count: 1 });
+    const rejected = await waitForMessage(host.messages, 'MOVE_REJECTED', msgCount);
+    expect(rejected.type).toBe('MOVE_REJECTED');
+
+    host.ws.close();
+  });
+
+  it('should reject non-host adding bots', async () => {
+    const host = await createClient(port);
+    sendMsg(host.ws, { type: 'CREATE_ROOM', playerName: 'Alice', mode: 'standard', token: nextToken() });
+    const created = await waitForMessage(host.messages, 'ROOM_CREATED') as any;
+
+    const p2 = await createClient(port);
+    sendMsg(p2.ws, { type: 'JOIN_ROOM', roomCode: created.roomCode, playerName: 'Bob', token: nextToken() });
+    await waitForMessage(p2.messages, 'ROOM_JOINED');
+
+    const msgCount = p2.messages.length;
+    sendMsg(p2.ws, { type: 'ADD_BOTS', count: 1 });
+    const rejected = await waitForMessage(p2.messages, 'MOVE_REJECTED', msgCount);
+    expect(rejected.type).toBe('MOVE_REJECTED');
+
+    host.ws.close();
+    p2.ws.close();
+  });
+
+  it('should start and play a game with bots', async () => {
+    const host = await createClient(port);
+    sendMsg(host.ws, { type: 'CREATE_ROOM', playerName: 'Human', mode: 'standard', token: nextToken() });
+    const created = await waitForMessage(host.messages, 'ROOM_CREATED') as any;
+
+    // Add 2 bots
+    let msgCount = host.messages.length;
+    sendMsg(host.ws, { type: 'ADD_BOTS', count: 2 });
+    const joined = await waitForMessage(host.messages, 'ROOM_JOINED', msgCount) as any;
+    expect(joined.players).toHaveLength(3);
+
+    // Start the game
+    msgCount = host.messages.length;
+    sendMsg(host.ws, { type: 'START_GAME', cardsPerPlayer: 2 });
+
+    const gameState = await waitForMessage(host.messages, 'GAME_STATE', msgCount) as any;
+    expect(gameState.state.phase).toBe('playing');
+    expect(gameState.state.myHand.length).toBeGreaterThanOrEqual(2);
+
+    // If it's a bot's turn, the bot should play automatically.
+    // If it's the human's turn, draw a card to trigger bot turns.
+    const state = gameState.state;
+    if (state.currentPlayerId === created.playerId) {
+      msgCount = host.messages.length;
+      sendMsg(host.ws, { type: 'PLAYER_ACTION', action: { type: 'DRAW_CARD' } });
+      // Should get an updated state back
+      await waitForMessage(host.messages, 'GAME_STATE', msgCount);
+    }
+
+    // Wait for bots to play — we should receive more GAME_STATE messages
+    // as bots take their turns automatically (actionDelayMs=0)
+    await new Promise(resolve => setTimeout(resolve, 200));
+
+    // Count game state messages — should have more than just the initial one
+    const gameStates = host.messages.filter(m => m.type === 'GAME_STATE');
+    expect(gameStates.length).toBeGreaterThan(1);
+
+    host.ws.close();
+  });
+
+  it('should reject adding bots during a game', async () => {
+    const host = await createClient(port);
+    sendMsg(host.ws, { type: 'CREATE_ROOM', playerName: 'Alice', mode: 'standard', token: nextToken() });
+    const created = await waitForMessage(host.messages, 'ROOM_CREATED') as any;
+
+    // Add 2 bots and start
+    let msgCount = host.messages.length;
+    sendMsg(host.ws, { type: 'ADD_BOTS', count: 2 });
+    await waitForMessage(host.messages, 'ROOM_JOINED', msgCount);
+
+    msgCount = host.messages.length;
+    sendMsg(host.ws, { type: 'START_GAME', cardsPerPlayer: 2 });
+    await waitForMessage(host.messages, 'GAME_STATE', msgCount);
+
+    // Wait for any bot turns to settle
+    await new Promise(resolve => setTimeout(resolve, 200));
+
+    // Try adding bot during game
+    msgCount = host.messages.length;
+    sendMsg(host.ws, { type: 'ADD_BOTS', count: 1 });
+    const rejected = await waitForMessage(host.messages, 'MOVE_REJECTED', msgCount);
+    expect(rejected.type).toBe('MOVE_REJECTED');
+
+    host.ws.close();
   });
 });
 
