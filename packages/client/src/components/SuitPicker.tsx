@@ -9,7 +9,7 @@ const SUITS: { suit: Suit; symbol: string; color: string }[] = [
 
 interface SuitPickerProps {
   onPick: (suit: Suit) => void;
-  onCancel: () => void;
+  onCancel?: () => void;
 }
 
 export function SuitPicker({ onPick, onCancel }: SuitPickerProps) {
@@ -31,12 +31,14 @@ export function SuitPicker({ onPick, onCancel }: SuitPickerProps) {
             </button>
           ))}
         </div>
-        <button
-          onClick={onCancel}
-          className="mt-3 w-full text-sm text-gray-400 py-2"
-        >
-          Cancel
-        </button>
+        {onCancel && (
+          <button
+            onClick={onCancel}
+            className="mt-3 w-full text-sm text-gray-400 py-2"
+          >
+            Cancel
+          </button>
+        )}
       </div>
     </div>
   );

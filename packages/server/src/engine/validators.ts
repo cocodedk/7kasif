@@ -1,5 +1,5 @@
 import type {
-  GameState, Card, Action, PlayCardAction, RevealCardAction, Suit, PendingChain, PendingAce, PendingPenalty,
+  GameState, Card, Action, PlayCardAction, RevealCardAction, DeclareSuitAction, Suit, PendingChain, PendingAce, PendingPenalty,
 } from '@hafte-kasif/shared';
 import { cardEquals } from '@hafte-kasif/shared';
 
@@ -92,6 +92,10 @@ export function validatePlayCard(
   // Block play during queen-reveal — must reveal first
   if (state.pendingEffect?.type === 'queen-reveal' && state.pendingEffect.targetPlayerId === playerId) {
     return 'You must reveal a card first';
+  }
+  // Block play during jack-declare — must declare suit first
+  if (state.pendingEffect?.type === 'jack-declare') {
+    return 'You must declare a suit for the initial Jack first';
   }
 
   if (!hasCardInHand(state, playerId, action.card)) {
@@ -194,6 +198,10 @@ export function validateDrawCard(state: GameState, playerId: string): string | n
   if (state.pendingEffect?.type === 'queen-reveal' && state.pendingEffect.targetPlayerId === playerId) {
     return 'You must reveal a card first';
   }
+  // Block draw during jack-declare
+  if (state.pendingEffect?.type === 'jack-declare') {
+    return 'You must declare a suit for the initial Jack first';
+  }
   // During seven-chain: always allow draw (accept chain penalty)
   if (state.pendingEffect?.type === 'seven-chain') {
     return null;
@@ -224,6 +232,10 @@ export function validatePassTurn(state: GameState, playerId: string): string | n
   // Block pass during queen-reveal
   if (state.pendingEffect?.type === 'queen-reveal' && state.pendingEffect.targetPlayerId === playerId) {
     return 'You must reveal a card first';
+  }
+  // Block pass during jack-declare
+  if (state.pendingEffect?.type === 'jack-declare') {
+    return 'You must declare a suit for the initial Jack first';
   }
 
   // Can't pass during a 7-chain — must counter or accept (draw)
@@ -276,6 +288,20 @@ export function validateRevealCard(
   return null;
 }
 
+export function validateDeclareSuit(
+  state: GameState,
+  playerId: string,
+  action: DeclareSuitAction,
+): string | null {
+  if (!isCurrentPlayer(state, playerId)) {
+    return 'Not your turn';
+  }
+  if (state.pendingEffect?.type !== 'jack-declare') {
+    return 'No suit declaration pending';
+  }
+  return null;
+}
+
 export function validateAction(
   state: GameState,
   playerId: string,
@@ -306,6 +332,8 @@ export function validateAction(
     }
     case 'REVEAL_CARD':
       return validateRevealCard(state, playerId, action);
+    case 'DECLARE_SUIT':
+      return validateDeclareSuit(state, playerId, action);
     default:
       return 'Unknown action type';
   }

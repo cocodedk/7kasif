@@ -10,6 +10,11 @@ export function isCardPlayable(card: Card, view: PlayerView): boolean {
     return false;
   }
 
+  // During jack-declare: no cards playable (must declare suit first)
+  if (view.pendingEffect?.type === 'jack-declare') {
+    return false;
+  }
+
   // During seven-penalty: no cards playable until minimum drawn
   if (view.pendingEffect?.type === 'seven-penalty') {
     if (view.pendingEffect.drawn < view.pendingEffect.penalty) {
