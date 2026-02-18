@@ -61,7 +61,7 @@ export function GameOverScreen({
           <div className="bg-white/5 rounded-lg p-3 space-y-2">
             <h3 className="text-sm font-semibold text-gray-400 mb-2">Hand Breakdown</h3>
             {hands.map(h => {
-              const isThisLoser = h.playerId === loserId;
+              const isThisLoser = reversed ? h.playerId === winnerId : h.playerId === loserId;
               return (
                 <div
                   key={h.playerId}

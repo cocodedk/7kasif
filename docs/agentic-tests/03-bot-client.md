@@ -64,10 +64,11 @@ export class BotClient {
   }
 
   send(msg: ClientMessage): void {
-    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-      throw new Error(`[${this.name}] WebSocket not connected`);
+    if (!this.connected) {
+      console.warn(`[${this.name}] Skipping send — WebSocket not connected`);
+      return;
     }
-    this.ws.send(JSON.stringify(msg));
+    this.ws!.send(JSON.stringify(msg));
   }
 
   onMessage(handler: MessageHandler): void {
@@ -118,7 +119,7 @@ await bot.connect('ws://localhost:3000/ws');
 ```
 
 ### send(msg: ClientMessage): void
-Sends a typed message to the server. Throws if WebSocket is not in OPEN state.
+Sends a typed message to the server. Logs a warning and returns silently if WebSocket is not in OPEN state.
 
 ```typescript
 bot.send({ type: 'JOIN_ROOM', roomCode: 'ABCD', playerName: 'Alice', token });
@@ -177,7 +178,7 @@ bot.onMessage((msg) => {
   }
   if (msg.type === 'TURN_REQUEST') {
     // Bot makes a decision and plays a card
-    bot.send({ type: 'PLAY_CARD', cardId: 'some-card-id' });
+    bot.send({ type: 'PLAYER_ACTION', action: { type: 'PLAY_CARD', card: someCard } });
   }
 });
 

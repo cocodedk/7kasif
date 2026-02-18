@@ -22,7 +22,7 @@ export function decideAction(
     const revealable = view.myHand.filter(
       c => !view.myRevealedCards?.some(r => r.suit === c.suit && r.value === c.value),
     );
-    if (revealable.length === 0) return { type: 'DRAW_CARD' }; // shouldn't happen
+    if (revealable.length === 0) return null; // no cards left to reveal
     // Pick lowest priority card to reveal (don't reveal special cards)
     const sorted = [...revealable].sort(
       (a, b) => cardNumericValue(a) - cardNumericValue(b),

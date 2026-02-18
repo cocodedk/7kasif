@@ -26,7 +26,9 @@ export function useAuth() {
     const userJson = localStorage.getItem(USER_KEY);
     if (token && userJson) {
       try {
-        return { user: JSON.parse(userJson), token, loading: false };
+        const user = JSON.parse(userJson);
+        if (!user.role) user.role = 'player';
+        return { user, token, loading: false };
       } catch {
         // Corrupt data
       }

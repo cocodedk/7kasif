@@ -211,6 +211,7 @@ export class RoomManager {
 
   private removePlayerFromAllRooms(playerId: string): void {
     for (const [code, room] of this.rooms) {
+      if (room.gameState) continue;
       room.players = room.players.filter(p => p.id !== playerId);
       if (room.players.length === 0) {
         this.rooms.delete(code);

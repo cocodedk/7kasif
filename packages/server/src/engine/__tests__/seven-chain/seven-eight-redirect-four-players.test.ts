@@ -53,7 +53,7 @@ describe('Seven — 8 redirect with four players', () => {
     log('p1 passes');
     const r4 = applyAction(r3.newState, 'p1', { type: 'PASS_TURN' });
     if (!r4.ok) {
-      log(`Pass failed: ${r4.error}`);
+      log(`Pass failed: ${r4.reason}`);
     }
     expect(r4.ok).toBe(true);
     if (!r4.ok) return;
@@ -105,6 +105,7 @@ describe('Seven — 8 redirect with four players', () => {
     });
 
     const chainEvent = r3.events.find(e => e.type === 'CHAIN_REACTION');
+    expect(chainEvent).toBeDefined();
     if (chainEvent?.type === 'CHAIN_REACTION') {
       expect(chainEvent.targetPlayerId).toBe('p2');
     }
@@ -129,7 +130,7 @@ describe('Seven — 8 redirect with four players', () => {
     log('p2 passes');
     const r7 = applyAction(r6.newState, 'p2', { type: 'PASS_TURN' });
     if (!r7.ok) {
-      log(`Pass failed: ${r7.error}`);
+      log(`Pass failed: ${r7.reason}`);
     }
     expect(r7.ok).toBe(true);
     if (!r7.ok) return;

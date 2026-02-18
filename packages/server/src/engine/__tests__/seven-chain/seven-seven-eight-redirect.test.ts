@@ -52,6 +52,7 @@ describe('Seven — 7 + 7 + 8 redirect', () => {
 
     log('Verify: chain reaction event with target p3, penalty 4');
     const chainEvent = r3.events.find(e => e.type === 'CHAIN_REACTION');
+    expect(chainEvent).toBeDefined();
     if (chainEvent?.type === 'CHAIN_REACTION') {
       expect(chainEvent.targetPlayerId).toBe('p3');
       expect(chainEvent.penalty).toBe(4);

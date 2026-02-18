@@ -30,9 +30,10 @@ export function isCardPlayable(card: Card, view: PlayerView): boolean {
     return false;
   }
 
-  // During an ace-chain: only aces or matching suit
+  // During an ace-chain: aces, jacks, or matching suit
   if (view.pendingEffect?.type === 'ace-chain') {
     if (card.value === 'ace') return true;
+    if (card.value === 'jack') return true;
     if (card.suit === view.pendingEffect.suit) return true;
     return false;
   }

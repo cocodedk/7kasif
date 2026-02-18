@@ -48,7 +48,9 @@ export class MessageHandler {
   }
 
   private resolvePlayerId(token?: string): { playerId: string; userId: number } | null {
-    console.log(`[AUTH] resolvePlayerId token=${token ? token.substring(0, 20) + '...' : 'MISSING'}`);
+    if (process.env.DEBUG_GAME_LOG) {
+      console.log(`[AUTH] resolvePlayerId token=${token ? 'PRESENT' : 'MISSING'}`);
+    }
     if (token) {
       try {
         const decoded = verifyToken(token);

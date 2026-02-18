@@ -21,7 +21,7 @@ The module creates 3 bot users with fixed credentials:
 
 ```typescript
 import jwt from 'jsonwebtoken';
-import { getPool } from '../auth/db.js';
+import { getPool } from '../../auth/db.js';
 
 export interface BotCredentials {
   userId: number;
@@ -51,7 +51,7 @@ export async function createBotCredentials(): Promise<BotCredentials[]> {
 
 ## Usage Example
 ```typescript
-import { createBotCredentials } from './packages/server/src/__tests__/bots/bot-auth.js';
+import { createBotCredentials } from './bot-auth.js';
 
 const bots = await createBotCredentials();
 // bots = [

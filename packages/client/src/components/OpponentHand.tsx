@@ -35,10 +35,12 @@ export function OpponentHand({ opponent, isCurrentTurn, isNext, onChallenge }: O
       </div>
 
       {/* Single card back + count */}
-      <div className="flex items-center gap-1">
-        <CardBack small />
-        <span className="text-sm font-bold text-gray-300">&times;{opponent.cardCount}</span>
-      </div>
+      {opponent.cardCount > 0 && (
+        <div className="flex items-center gap-1">
+          <CardBack small />
+          <span className="text-sm font-bold text-gray-300">&times;{opponent.cardCount}</span>
+        </div>
+      )}
 
       {/* Revealed cards */}
       {opponent.revealedCards.length > 0 && (

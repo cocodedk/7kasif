@@ -298,6 +298,7 @@ describe('Card Effects', () => {
     if (result.ok) {
       expect(result.newState.phase).toBe('finished');
       const gameOver = result.events.find(e => e.type === 'GAME_OVER');
+      expect(gameOver).toBeDefined();
       if (gameOver?.type === 'GAME_OVER') {
         expect(gameOver.points).toBe(1);
       }
@@ -517,6 +518,7 @@ describe('Jack', () => {
     if (result.ok) {
       expect(result.newState.phase).toBe('finished');
       const gameOver = result.events.find(e => e.type === 'GAME_OVER');
+      expect(gameOver).toBeDefined();
       if (gameOver?.type === 'GAME_OVER') {
         expect(gameOver.points).toBe(2);
       }
@@ -830,6 +832,7 @@ describe('Winning & Scoring', () => {
     if (result.ok) {
       expect(result.newState.phase).toBe('finished');
       const gameOver = result.events.find(e => e.type === 'GAME_OVER');
+      expect(gameOver).toBeDefined();
       if (gameOver?.type === 'GAME_OVER') {
         expect(gameOver.points).toBe(1);
       }
@@ -854,6 +857,7 @@ describe('Winning & Scoring', () => {
     expect(result.ok).toBe(true);
     if (result.ok) {
       const gameOver = result.events.find(e => e.type === 'GAME_OVER');
+      expect(gameOver).toBeDefined();
       if (gameOver?.type === 'GAME_OVER') {
         expect(gameOver.loserId).toBe('p1'); // p1 has highest hand value
       }
@@ -885,6 +889,7 @@ describe('Winning & Scoring', () => {
     expect(result.ok).toBe(true);
     if (result.ok) {
       const gameOver = result.events.find(e => e.type === 'GAME_OVER');
+      expect(gameOver).toBeDefined();
       if (gameOver?.type === 'GAME_OVER') {
         expect(gameOver.reversed).toBe(true);
         expect(gameOver.loserId).toBe('p2'); // winner becomes loser

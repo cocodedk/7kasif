@@ -56,10 +56,6 @@ export class BotClient {
     timeoutMs: number = 5000,
   ): Promise<Extract<ServerMessage, { type: T }>> {
     return new Promise((resolve, reject) => {
-      const timer = setTimeout(() => {
-        reject(new Error(`[${this.name}] Timeout waiting for ${type}`));
-      }, timeoutMs);
-
       const handler = (msg: ServerMessage) => {
         if (msg.type === type) {
           clearTimeout(timer);
@@ -67,6 +63,12 @@ export class BotClient {
           resolve(msg as Extract<ServerMessage, { type: T }>);
         }
       };
+
+      const timer = setTimeout(() => {
+        this.handlers = this.handlers.filter((h) => h !== handler);
+        reject(new Error(`[${this.name}] Timeout waiting for ${type}`));
+      }, timeoutMs);
+
       this.handlers.push(handler);
     });
   }

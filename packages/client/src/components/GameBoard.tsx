@@ -39,19 +39,8 @@ interface FeedEntry {
   color: string; // tailwind text color
 }
 
-let feedIdCounter = 0;
-let feedSeqCounter = 0;
-
 function formatCard(card: CardType): string {
-  const VALUE_NAMES: Record<string, string> = {
-    '2': '2', '3': '3', '4': '4', '5': '5', '6': '6',
-    '7': '7', '8': '8', '9': '9', '10': '10',
-    'jack': 'J', 'queen': 'Q', 'king': 'K', 'ace': 'A',
-  };
-  const SUIT_CHARS: Record<string, string> = {
-    hearts: '\u2665', diamonds: '\u2666', clubs: '\u2663', spades: '\u2660',
-  };
-  return `${VALUE_NAMES[String(card.value)]}${SUIT_CHARS[card.suit]}`;
+  return `${VALUE_DISPLAY[String(card.value)]}${SUIT_SYMBOLS[card.suit]}`;
 }
 
 export function GameBoard({ game, playerId, error, send, lastEvents = [] }: GameBoardProps) {
@@ -115,6 +104,8 @@ export function GameBoard({ game, playerId, error, send, lastEvents = [] }: Game
   // Detect played cards for the overlay animation
   const [playedCard, setPlayedCard] = useState<{ card: CardType; playerName: string } | null>(null);
   const playedTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const feedIdCounter = useRef(0);
+  const feedSeqCounter = useRef(0);
 
   // Helper to resolve player name from id
   const playerName = (id: string) =>
@@ -126,12 +117,12 @@ export function GameBoard({ game, playerId, error, send, lastEvents = [] }: Game
 
     const newEntries: FeedEntry[] = [];
     for (const ev of lastEvents) {
-      const seq = ++feedSeqCounter;
+      const seq = ++feedSeqCounter.current;
       switch (ev.type) {
         case 'CARD_PLAYED': {
           const name = playerName(ev.playerId);
           newEntries.push({
-            seq, id: ++feedIdCounter,
+            seq, id: ++feedIdCounter.current,
             text: `${name} played ${formatCard(ev.card)}`,
             card: ev.card,
             color: 'text-green-300',
@@ -144,21 +135,21 @@ export function GameBoard({ game, playerId, error, send, lastEvents = [] }: Game
         }
         case 'CARD_DRAWN':
           newEntries.push({
-            seq, id: ++feedIdCounter,
+            seq, id: ++feedIdCounter.current,
             text: `${playerName(ev.playerId)} drew ${ev.count} card${ev.count > 1 ? 's' : ''}`,
             color: 'text-blue-300',
           });
           break;
         case 'TURN_PASSED':
           newEntries.push({
-            seq, id: ++feedIdCounter,
+            seq, id: ++feedIdCounter.current,
             text: `${playerName(ev.playerId)} passed`,
             color: 'text-gray-400',
           });
           break;
         case 'CARD_REVEALED':
           newEntries.push({
-            seq, id: ++feedIdCounter,
+            seq, id: ++feedIdCounter.current,
             text: `${playerName(ev.playerId)} revealed ${formatCard(ev.card)}`,
             card: ev.card,
             color: 'text-pink-300',
@@ -166,7 +157,7 @@ export function GameBoard({ game, playerId, error, send, lastEvents = [] }: Game
           break;
         case 'CARD_GIVEN':
           newEntries.push({
-            seq, id: ++feedIdCounter,
+            seq, id: ++feedIdCounter.current,
             text: ev.card
               ? `${playerName(ev.fromPlayerId)} gave ${formatCard(ev.card)} to ${playerName(ev.toPlayerId)}`
               : `${playerName(ev.fromPlayerId)} gave a card to ${playerName(ev.toPlayerId)}`,
@@ -176,35 +167,35 @@ export function GameBoard({ game, playerId, error, send, lastEvents = [] }: Game
           break;
         case 'DIRECTION_REVERSED':
           newEntries.push({
-            seq, id: ++feedIdCounter,
+            seq, id: ++feedIdCounter.current,
             text: `Direction reversed`,
             color: 'text-orange-300',
           });
           break;
         case 'PLAYER_SKIPPED':
           newEntries.push({
-            seq, id: ++feedIdCounter,
+            seq, id: ++feedIdCounter.current,
             text: `${playerName(ev.playerId)} was skipped`,
             color: 'text-red-300',
           });
           break;
         case 'CHAIN_REACTION':
           newEntries.push({
-            seq, id: ++feedIdCounter,
+            seq, id: ++feedIdCounter.current,
             text: `${playerName(ev.targetPlayerId)} takes ${ev.penalty} card penalty`,
             color: 'text-orange-400',
           });
           break;
         case 'DECK_RESHUFFLED':
           newEntries.push({
-            seq, id: ++feedIdCounter,
+            seq, id: ++feedIdCounter.current,
             text: 'Deck reshuffled from discard pile',
             color: 'text-amber-400',
           });
           break;
         case 'HOUSE_CHANGED':
           newEntries.push({
-            seq, id: ++feedIdCounter,
+            seq, id: ++feedIdCounter.current,
             text: `House changed to ${ev.newSuit}`,
             color: 'text-yellow-400',
           });
@@ -422,7 +413,7 @@ export function GameBoard({ game, playerId, error, send, lastEvents = [] }: Game
         <div className="flex-none flex items-center justify-center gap-1 px-4 py-1">
           <span className="text-[10px] text-blue-400 mr-1">Revealed:</span>
           {game.myRevealedCards.map((card, i) => (
-            <Card key={`${card.value}-${card.suit}`} card={card} small revealed />
+            <Card key={`${card.value}-${card.suit}-${i}`} card={card} small revealed />
           ))}
         </div>
       )}

@@ -248,7 +248,6 @@ export class BotRunner {
       credentials: firstCred,
       client: firstClient,
       playerId: created.playerId,
-      hasDrawnThisTurn: false,
       hasAnnounced: false,
       rejectedCards: new Set(),
     };
@@ -297,7 +296,6 @@ export class BotRunner {
     // Wait for all rounds to complete, then stop
     await done;
     this.stop();
-    process.exit(0);
   }
 
   stop(): void {

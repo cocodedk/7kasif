@@ -19,13 +19,15 @@ export function AdminScreen({ token, onBack }: AdminScreenProps) {
     setLoading(true);
 
     try {
+      const trimmedEmail = email.trim();
+      const trimmedDisplayName = displayName.trim();
       const res = await fetch(`${window.location.origin}/api/admin/create-user`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({ email, displayName }),
+        body: JSON.stringify({ email: trimmedEmail, displayName: trimmedDisplayName }),
       });
 
       if (!res.ok) {

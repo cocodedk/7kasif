@@ -57,7 +57,7 @@ Is it my turn? (currentPlayerId === myPlayerId)
 ### Card Priority
 
 When choosing which playable card to play, the bot uses this priority (highest first):
-1. **Jack** (11) — wild card, very flexible for declaring suit
+1. **Jack** (10) — wild card, very flexible for declaring suit
 2. **Ace** (7) — chain starter, high control value
 3. **7** (8) — chain starter, forces decisions
 4. **10** (6) — skip/reverse, good tempo control
@@ -76,11 +76,11 @@ When choosing which playable card to play, the bot uses this priority (highest f
 
 ## Implementation File
 
-Create: `/home/cocodedk/0-projects/7kasif/packages/server/src/__tests__/bots/bot-brain.ts`
+Create: `packages/server/src/__tests__/bots/bot-brain.ts`
 
 ```typescript
-import type { PlayerView, Action, Card, Suit } from '@7kasif/shared';
-import { isCardPlayable } from '@7kasif/shared';
+import type { PlayerView, Action, Card, Suit } from '@hafte-kasif/shared';
+import { isCardPlayable } from '@hafte-kasif/shared';
 
 export function decideAction(
   view: PlayerView,

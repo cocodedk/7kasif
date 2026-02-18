@@ -22,7 +22,7 @@ export function WaitingRoom({ roomCode, players, isHost, send }: WaitingRoomProp
     navigator.clipboard.writeText(roomCode).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
-    });
+    }).catch(() => {});
   }, [roomCode]);
 
   return (
