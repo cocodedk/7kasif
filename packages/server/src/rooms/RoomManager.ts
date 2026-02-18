@@ -1,9 +1,15 @@
 import type {
-  GameState, GameMode, PlayerView, OpponentView, Card,
-  TournamentSession, TournamentView, PlayerScore, RoundResult,
+  GameState, GameMode, PlayerView, Card,
+  TournamentSession, TournamentView,
 } from '@hafte-kasif/shared';
 import { createInitialState } from '../engine/game.js';
-import { createEmptyPlayerScore, applyPoints, shuffleDeck } from '@hafte-kasif/shared';
+import { createEmptyPlayerScore, shuffleDeck } from '@hafte-kasif/shared';
+import { getPlayerView } from './player-view.js';
+import {
+  recordRoundResult as doRecordRoundResult,
+  endSession as doEndSession,
+  getTournamentView as doGetTournamentView,
+} from './tournament.js';
 
 interface RoomPlayer {
   id: string;
@@ -123,9 +129,6 @@ export class RoomManager {
     return { state, deck: initialDeck };
   }
 
-  /**
-   * Record the result of a completed round and update scoring table.
-   */
   recordRoundResult(
     code: string,
     winnerId: string,
@@ -137,72 +140,19 @@ export class RoomManager {
   ): TournamentView | null {
     const room = this.rooms.get(code);
     if (!room) return null;
-
-    const roundResult: RoundResult = {
-      roundNumber: room.tournament.rounds.length + 1,
-      winnerId,
-      loserId,
-      points,
-      reversed,
-      finishingCardValue,
-      timestamp: new Date().toISOString(),
-    };
-    room.tournament.rounds.push(roundResult);
-
-    // Apply scoring
-    if (reversed) {
-      // Winner becomes loser, losers become winners
-      const winnerScore = room.tournament.playerScores.find(s => s.playerId === winnerId);
-      if (winnerScore) {
-        const idx = room.tournament.playerScores.indexOf(winnerScore);
-        room.tournament.playerScores[idx] = applyPoints(winnerScore, 'X', points);
-      }
-      // All tied losers get winning points
-      // loserId is actually the original winner who now loses
-      for (const ps of room.tournament.playerScores) {
-        if (ps.playerId !== winnerId) {
-          const idx = room.tournament.playerScores.indexOf(ps);
-          room.tournament.playerScores[idx] = applyPoints(ps, 'I', points, isAceChainFull);
-        }
-      }
-    } else {
-      // Normal: winner gets I, loser gets X
-      const winnerScore = room.tournament.playerScores.find(s => s.playerId === winnerId);
-      if (winnerScore) {
-        const idx = room.tournament.playerScores.indexOf(winnerScore);
-        room.tournament.playerScores[idx] = applyPoints(winnerScore, 'I', points, isAceChainFull);
-      }
-      const loserScore = room.tournament.playerScores.find(s => s.playerId === loserId);
-      if (loserScore) {
-        const idx = room.tournament.playerScores.indexOf(loserScore);
-        room.tournament.playerScores[idx] = applyPoints(loserScore, 'X', points);
-      }
-    }
-
-    // Clear game state for next round
-    room.gameState = null;
-
-    return this.getTournamentView(code);
+    return doRecordRoundResult(room, winnerId, loserId, points, reversed, finishingCardValue, isAceChainFull);
   }
 
   endSession(code: string): TournamentView | null {
     const room = this.rooms.get(code);
     if (!room) return null;
-    room.tournament.isActive = false;
-    return this.getTournamentView(code);
+    return doEndSession(room);
   }
 
   getTournamentView(code: string): TournamentView | null {
     const room = this.rooms.get(code);
     if (!room) return null;
-
-    return {
-      sessionId: room.tournament.id,
-      createdAt: room.tournament.createdAt,
-      playerScores: room.tournament.playerScores,
-      rounds: room.tournament.rounds,
-      currentRound: room.tournament.rounds.length + 1,
-    };
+    return doGetTournamentView(room);
   }
 
   removeRoom(code: string): void {
@@ -240,40 +190,7 @@ export class RoomManager {
   }
 
   getPlayerView(state: GameState, playerId: string): PlayerView {
-    const me = state.players.find(p => p.id === playerId)!;
-    const opponents: OpponentView[] = state.players
-      .filter(p => p.id !== playerId)
-      .map(p => ({
-        id: p.id,
-        name: p.name,
-        cardCount: p.hand.length,
-        revealedCards: p.revealedCards,
-        hasAnnouncedOneCard: p.hasAnnouncedOneCard,
-      }));
-
-    const topDiscard = state.discardPile.length > 0
-      ? state.discardPile[state.discardPile.length - 1]
-      : null;
-
-    let declaredSuit = null;
-    if (state.lastAction?.type === 'PLAY_CARD' && state.lastAction.card.value === 'jack') {
-      declaredSuit = state.lastAction.declaredSuit ?? null;
-    }
-
-    return {
-      phase: state.phase,
-      myHand: me.hand,
-      myRevealedCards: me.revealedCards,
-      opponents,
-      currentPlayerId: state.players[state.currentPlayerIndex].id,
-      direction: state.direction,
-      topDiscard,
-      deckCount: state.deck.length,
-      pendingEffect: state.pendingEffect,
-      declaredSuit,
-      hasDrawnThisTurn: state.hasDrawnThisTurn,
-      mode: state.mode,
-    };
+    return getPlayerView(state, playerId);
   }
 
   private generateCode(): string {
