@@ -25,29 +25,25 @@ export function recordRoundResult(
   // Apply scoring
   if (reversed) {
     // Winner becomes loser, losers become winners
-    const winnerScore = room.tournament.playerScores.find(s => s.playerId === winnerId);
-    if (winnerScore) {
-      const idx = room.tournament.playerScores.indexOf(winnerScore);
-      room.tournament.playerScores[idx] = applyPoints(winnerScore, 'X', points);
+    const winnerIdx = room.tournament.playerScores.findIndex(s => s.playerId === winnerId);
+    if (winnerIdx !== -1) {
+      room.tournament.playerScores[winnerIdx] = applyPoints(room.tournament.playerScores[winnerIdx], 'X', points);
     }
     // All tied losers get winning points
-    for (const ps of room.tournament.playerScores) {
-      if (ps.playerId !== winnerId) {
-        const idx = room.tournament.playerScores.indexOf(ps);
-        room.tournament.playerScores[idx] = applyPoints(ps, 'I', points, isAceChainFull);
+    for (let i = 0; i < room.tournament.playerScores.length; i++) {
+      if (room.tournament.playerScores[i].playerId !== winnerId) {
+        room.tournament.playerScores[i] = applyPoints(room.tournament.playerScores[i], 'I', points, isAceChainFull);
       }
     }
   } else {
     // Normal: winner gets I, loser gets X
-    const winnerScore = room.tournament.playerScores.find(s => s.playerId === winnerId);
-    if (winnerScore) {
-      const idx = room.tournament.playerScores.indexOf(winnerScore);
-      room.tournament.playerScores[idx] = applyPoints(winnerScore, 'I', points, isAceChainFull);
+    const winnerIdx = room.tournament.playerScores.findIndex(s => s.playerId === winnerId);
+    if (winnerIdx !== -1) {
+      room.tournament.playerScores[winnerIdx] = applyPoints(room.tournament.playerScores[winnerIdx], 'I', points, isAceChainFull);
     }
-    const loserScore = room.tournament.playerScores.find(s => s.playerId === loserId);
-    if (loserScore) {
-      const idx = room.tournament.playerScores.indexOf(loserScore);
-      room.tournament.playerScores[idx] = applyPoints(loserScore, 'X', points);
+    const loserIdx = room.tournament.playerScores.findIndex(s => s.playerId === loserId);
+    if (loserIdx !== -1) {
+      room.tournament.playerScores[loserIdx] = applyPoints(room.tournament.playerScores[loserIdx], 'X', points);
     }
   }
 
