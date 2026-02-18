@@ -6,7 +6,7 @@ type MessageHandler = (msg: ServerMessage) => void;
 export class BotClient {
   private ws: WebSocket | null = null;
   private handlers: MessageHandler[] = [];
-  private pendingWaiters: Array<(err: Error) => void> = [];
+  private pendingWaiters: Array<{ reject: (err: Error) => void; timer: ReturnType<typeof setTimeout> }> = [];
   private name: string;
 
   constructor(name: string) {
@@ -32,13 +32,21 @@ export class BotClient {
       });
       this.ws.on('error', (err) => {
         console.error(`[${this.name}] WS error:`, err.message);
+        const waiterErr = new Error(`[${this.name}] WebSocket error: ${err.message}`);
+        for (const w of this.pendingWaiters) {
+          clearTimeout(w.timer);
+          w.reject(waiterErr);
+        }
+        this.pendingWaiters = [];
+        this.handlers = [];
         reject(err);
       });
       this.ws.on('close', () => {
         console.log(`[${this.name}] Disconnected`);
         const err = new Error(`[${this.name}] WebSocket closed`);
-        for (const reject of this.pendingWaiters) {
-          reject(err);
+        for (const w of this.pendingWaiters) {
+          clearTimeout(w.timer);
+          w.reject(err);
         }
         this.pendingWaiters = [];
         this.handlers = [];
@@ -71,26 +79,31 @@ export class BotClient {
         if (msg.type === type) {
           clearTimeout(timer);
           this.handlers = this.handlers.filter((h) => h !== handler);
-          this.pendingWaiters = this.pendingWaiters.filter((r) => r !== reject);
+          this.pendingWaiters = this.pendingWaiters.filter((w) => w.reject !== reject);
           resolve(msg as Extract<ServerMessage, { type: T }>);
         }
       };
 
       const timer = setTimeout(() => {
         this.handlers = this.handlers.filter((h) => h !== handler);
-        this.pendingWaiters = this.pendingWaiters.filter((r) => r !== reject);
+        this.pendingWaiters = this.pendingWaiters.filter((w) => w.reject !== reject);
         reject(new Error(`[${this.name}] Timeout waiting for ${type}`));
       }, timeoutMs);
 
       this.handlers.push(handler);
-      this.pendingWaiters.push(reject);
+      this.pendingWaiters.push({ reject, timer });
     });
   }
 
   close(): void {
-    this.ws?.close();
-    this.ws = null;
+    const err = new Error(`[${this.name}] Client closed`);
+    for (const w of this.pendingWaiters) {
+      clearTimeout(w.timer);
+      w.reject(err);
+    }
     this.pendingWaiters = [];
     this.handlers = [];
+    this.ws?.close();
+    this.ws = null;
   }
 }

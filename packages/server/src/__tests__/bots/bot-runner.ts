@@ -23,7 +23,6 @@ export class BotRunner {
   private roundsPlayed = 0;
   private maxRounds = 1;
   private hostBot: BotInstance | null = null;
-  private lastTournament: TournamentView | null = null;
   private onAllRoundsDone: (() => void) | null = null;
   private allRoundsDoneTriggered = false;
 
@@ -169,8 +168,6 @@ export class BotRunner {
       }
 
       if (msg.type === 'TOURNAMENT_UPDATE') {
-        this.lastTournament = msg.tournament;
-
         // Print summary once we have the final tournament update after the last round
         if (bot === this.hostBot && this.roundsPlayed >= this.maxRounds && !this.allRoundsDoneTriggered) {
           this.allRoundsDoneTriggered = true;
@@ -295,7 +292,7 @@ export class BotRunner {
 
     // Wait for all rounds to complete, then stop
     const timeout = new Promise<void>((_, reject) =>
-      setTimeout(() => reject(new Error('startAutonomous timed out')), 5 * 60 * 1000)
+      setTimeout(() => reject(new Error('startAutonomous timed out')), rounds * 60_000)
     );
     await Promise.race([done, timeout]).finally(() => this.stop());
   }

@@ -70,6 +70,7 @@ export function useAuth() {
       throw new Error(message);
     }
     const body = await res.json();
+    if (!body?.user) throw new Error('Invalid server response');
     if (!body.user.role) body.user.role = 'player';
     setAuth(body.user, body.token);
     return body;

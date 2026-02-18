@@ -40,6 +40,15 @@ Is it my turn? (currentPlayerId === myPlayerId)
       │   ├── Do I have matching suit card? → PLAY_CARD (that card)
       │   └── No match → DRAW_CARD
       │
+      ├── Am I in a queen-reveal? (pendingEffect.type === 'queen-reveal')
+      │   └── Pick least valuable unrevealed card → REVEAL_CARD
+      │
+      ├── Am I in a seven-penalty? (pendingEffect.type === 'seven-penalty')
+      │   ├── Drawn < penalty? → DRAW_CARD
+      │   ├── Have playable cards? → PLAY_CARD (best card)
+      │   ├── Drawn === penalty? → DRAW_CARD (optional extra)
+      │   └── Otherwise → PASS_TURN
+      │
       └── Normal turn:
           ├── Find all playable cards using isCardPlayable()
           ├── If playable cards exist:
@@ -58,8 +67,8 @@ Is it my turn? (currentPlayerId === myPlayerId)
 
 When choosing which playable card to play, the bot uses this priority (highest first):
 1. **Jack** (10) — wild card, very flexible for declaring suit
-2. **Ace** (7) — chain starter, high control value
-3. **7** (8) — chain starter, forces decisions
+2. **7** (8) — chain starter, forces decisions
+3. **Ace** (7) — chain starter, high control value
 4. **10** (6) — skip/reverse, good tempo control
 5. **King** (5) — skip + draw, offensive
 6. **Queen** (4) — reveal, interesting mechanic
@@ -76,7 +85,7 @@ When choosing which playable card to play, the bot uses this priority (highest f
 
 ## Implementation File
 
-Create: `packages/server/src/__tests__/bots/bot-brain.ts`
+Reference: `packages/server/src/__tests__/bots/bot-brain.ts`
 
 See the authoritative implementation: [`packages/server/src/__tests__/bots/bot-brain.ts`](../../packages/server/src/__tests__/bots/bot-brain.ts)
 
@@ -85,7 +94,7 @@ See the authoritative implementation: [`packages/server/src/__tests__/bots/bot-b
 - **Safe**: Always uses `isCardPlayable()` from shared — same validation as the real client
 - **Simple**: Picks highest-priority playable card, no deep strategy
 - **Complete**: Handles all special cases (Jack suit, 2 give, 8 chain choice)
-- **Stateful**: Caller tracks `hasDrawnThisTurn` and resets it when turn changes
+- **Stateless**: Caller manages turn state (`hasDrawnThisTurn`) externally
 
 ## Edge Cases
 
