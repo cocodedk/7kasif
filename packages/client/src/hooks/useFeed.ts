@@ -118,7 +118,7 @@ export function useFeed(
       }
     }
     if (newEntries.length > 0) {
-      setFeed(prev => [...newEntries, ...prev].slice(0, 12));
+      setFeed(prev => [...newEntries, ...prev].slice(0, 24));
     }
   }, [lastEvents, playerId, opponents]);
 
