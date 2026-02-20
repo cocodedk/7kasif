@@ -188,10 +188,32 @@ describe('Server Integration', () => {
       { ...p3, playerId: (await waitForMessage(p3.messages, 'ROOM_JOINED', 0) as any).playerId, state: p3State.state },
     ];
 
-    // Play a turn: current player draws (always valid)
+    // Play a turn: handle any pending effect from the initial card, then draw
     const currentPlayerId = hostState.state.currentPlayerId;
     const currentClient = allClients.find(c => c.playerId === currentPlayerId);
     if (currentClient) {
+      const pending = currentClient.state.pendingEffect;
+
+      // If the initial flipped card created a pending effect, resolve it first
+      if (pending?.type === 'jack-declare') {
+        const msgCountBefore = currentClient.messages.length;
+        sendMsg(currentClient.ws, {
+          type: 'PLAYER_ACTION',
+          action: { type: 'DECLARE_SUIT', suit: 'hearts' },
+        });
+        const afterDeclare = await waitForMessage(currentClient.messages, 'GAME_STATE', msgCountBefore);
+        expect(afterDeclare.type).toBe('GAME_STATE');
+      } else if (pending?.type === 'queen-reveal') {
+        const msgCountBefore = currentClient.messages.length;
+        sendMsg(currentClient.ws, {
+          type: 'PLAYER_ACTION',
+          action: { type: 'REVEAL_CARD', card: currentClient.state.myHand[0] },
+        });
+        const afterReveal = await waitForMessage(currentClient.messages, 'GAME_STATE', msgCountBefore);
+        expect(afterReveal.type).toBe('GAME_STATE');
+      }
+
+      // Now draw a card (valid for normal, ace-chain, and seven-chain states)
       const msgCountBefore = currentClient.messages.length;
       sendMsg(currentClient.ws, {
         type: 'PLAYER_ACTION',
