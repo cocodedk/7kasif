@@ -361,9 +361,22 @@ describe('Add Bots', () => {
     expect(gameState.state.myHand.length).toBeGreaterThanOrEqual(2);
 
     // If it's a bot's turn, the bot should play automatically.
-    // If it's the human's turn, draw a card to trigger bot turns.
+    // If it's the human's turn, resolve any pending effect then draw.
     const state = gameState.state;
     if (state.currentPlayerId === created.playerId) {
+      const pending = state.pendingEffect;
+
+      // Handle pending effects from initial card before drawing
+      if (pending?.type === 'jack-declare') {
+        msgCount = host.messages.length;
+        sendMsg(host.ws, { type: 'PLAYER_ACTION', action: { type: 'DECLARE_SUIT', suit: 'hearts' } });
+        await waitForMessage(host.messages, 'GAME_STATE', msgCount);
+      } else if (pending?.type === 'queen-reveal') {
+        msgCount = host.messages.length;
+        sendMsg(host.ws, { type: 'PLAYER_ACTION', action: { type: 'REVEAL_CARD', card: state.myHand[0] } });
+        await waitForMessage(host.messages, 'GAME_STATE', msgCount);
+      }
+
       msgCount = host.messages.length;
       sendMsg(host.ws, { type: 'PLAYER_ACTION', action: { type: 'DRAW_CARD' } });
       // Should get an updated state back
