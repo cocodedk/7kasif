@@ -147,7 +147,7 @@ function LogDetail({ token, logFile, playerNames, onBack }: { token: string; log
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch(`${window.location.origin}/api/admin/logs/${logFile.name}`, {
+        const res = await fetch(`${window.location.origin}/api/admin/logs/${encodeURIComponent(logFile.name)}`, {
           headers: { 'Authorization': `Bearer ${token}` },
         });
         if (!res.ok) throw new Error(`Failed (${res.status})`);
@@ -305,7 +305,7 @@ export function AdminScreen({ token, onBack }: AdminScreenProps) {
   // When opening a log detail, parse INIT entry to extract player names
   const openLog = async (log: LogFile) => {
     try {
-      const res = await fetch(`${window.location.origin}/api/admin/logs/${log.name}`, {
+      const res = await fetch(`${window.location.origin}/api/admin/logs/${encodeURIComponent(log.name)}`, {
         headers: { 'Authorization': `Bearer ${token}` },
       });
       if (!res.ok) throw new Error(`Failed (${res.status})`);

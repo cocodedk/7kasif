@@ -178,7 +178,7 @@ export async function handleApiRoute(
   }
 
   // GET /api/admin/logs/:filename — download a specific log file
-  const logFileMatch = url.match(/^\/api\/admin\/logs\/([A-Za-z0-9_#\-:.]+\.jsonl)$/);
+  const logFileMatch = decodeURIComponent(url).match(/^\/api\/admin\/logs\/([A-Za-z0-9_#\-:.]+\.jsonl)$/);
   if (logFileMatch && method === 'GET') {
     const admin = getAdminFromHeader(req);
     if (!admin) {
