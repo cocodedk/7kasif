@@ -107,10 +107,14 @@ export class RoomManager {
       );
     }
 
-    // Rotate dealer: host first round, then next player each round
-    const roundNum = room.tournament.rounds.length;
-    const dealerIdx = roundNum % room.players.length;
-    const dealerId = room.players[dealerIdx].id;
+    // Loser of previous round becomes dealer; first round: host is dealer
+    let dealerId: string;
+    const lastRound = room.tournament.rounds[room.tournament.rounds.length - 1];
+    if (lastRound) {
+      dealerId = lastRound.reversed ? lastRound.winnerId : lastRound.loserId;
+    } else {
+      dealerId = room.players[0].id;
+    }
 
     // Capture the shuffled deck for debug logging
     let initialDeck: Card[] = [];

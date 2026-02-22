@@ -137,6 +137,7 @@ export async function getTournamentHistory(): Promise<TournamentSummary[]> {
       (SELECT COUNT(*) FROM session_players sp WHERE sp.session_id = s.id) AS player_count,
       (SELECT COUNT(*) FROM rounds r WHERE r.session_id = s.id) AS round_count
     FROM sessions s
+    WHERE s.ended_at IS NOT NULL
     ORDER BY s.started_at DESC
     LIMIT 50
   `);
