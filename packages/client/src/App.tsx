@@ -100,13 +100,13 @@ function AuthenticatedGame({
 
   // Wrap send to inject token into CREATE_ROOM and JOIN_ROOM messages
   type SendMessage = ClientMessage | Omit<Extract<ClientMessage, { type: 'CREATE_ROOM' }>, 'token'> | Omit<Extract<ClientMessage, { type: 'JOIN_ROOM' }>, 'token'>;
-  const send = (msg: SendMessage) => {
+  const send = useCallback((msg: SendMessage) => {
     if (token && (msg.type === 'CREATE_ROOM' || msg.type === 'JOIN_ROOM')) {
       rawSend({ ...msg, token } as ClientMessage);
     } else {
       rawSend(msg as ClientMessage);
     }
-  };
+  }, [token, rawSend]);
 
   const playerId = state.lobby.playerId;
   const isHost = state.lobby.players.length > 0 && state.lobby.players[0]?.id === playerId;

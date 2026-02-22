@@ -84,6 +84,7 @@ export function DevPreview() {
           opponents: newOpponents,
           topDiscard: action.card,
           declaredSuit: action.declaredSuit ?? null,
+          hasDrawnThisTurn: false,
         };
       });
       setHasDrawn(false);
@@ -104,6 +105,7 @@ export function DevPreview() {
         ...prev,
         myHand: [...prev.myHand, card],
         deckCount: prev.deckCount - 1,
+        hasDrawnThisTurn: true,
       }));
       setHasDrawn(true);
       setError(null);

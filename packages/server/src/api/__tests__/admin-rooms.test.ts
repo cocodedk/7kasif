@@ -204,12 +204,13 @@ describe('DELETE /api/admin/rooms/:code', () => {
     expect(ws2.send).toHaveBeenCalledOnce();
 
     const msg1 = JSON.parse(ws1.send.mock.calls[0][0]);
-    expect(msg1.type).toBe('MOVE_REJECTED');
+    expect(msg1.type).toBe('ROOM_CLOSED');
     expect(msg1.reason).toContain('admin');
   });
 
   it('removes the room even when no players are connected', async () => {
     const room = rooms.createRoom('host1', 'Alice', 'standard');
+    const sendSpy = vi.spyOn(connections, 'send');
 
     const req = createMockReq('DELETE', `/api/admin/rooms/${room.code}`, {
       authorization: 'Bearer valid-admin-token',
@@ -220,6 +221,8 @@ describe('DELETE /api/admin/rooms/:code', () => {
 
     expect(res._status).toBe(200);
     expect(rooms.getRoom(room.code)).toBeUndefined();
+    // send is called for the player, but no ws is connected so it's a no-op
+    expect(sendSpy).toHaveBeenCalledWith('host1', expect.objectContaining({ type: 'ROOM_CLOSED' }));
   });
 });
 

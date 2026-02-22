@@ -100,6 +100,11 @@ export interface SessionEndedMessage {
   tournament: TournamentView;
 }
 
+export interface RoomClosedMessage {
+  type: 'ROOM_CLOSED';
+  reason: string;
+}
+
 export interface DebugGameInitMessage {
   type: 'DEBUG_GAME_INIT';
   deck: Card[];
@@ -114,6 +119,7 @@ export type ServerMessage =
   | RoomJoinedMessage
   | GameStateMessage
   | MoveRejectedMessage
+  | RoomClosedMessage
   | GameOverMessage
   | TournamentUpdateMessage
   | SessionEndedMessage

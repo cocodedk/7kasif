@@ -131,6 +131,9 @@ export function useGameState(onMessage: (cb: (msg: ServerMessage) => void) => vo
       case 'MOVE_REJECTED':
         dispatch({ type: 'ERROR', reason: msg.reason });
         break;
+      case 'ROOM_CLOSED':
+        dispatch({ type: 'RESET' });
+        break;
     }
   }, []);
 

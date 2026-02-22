@@ -7,7 +7,7 @@ import { ConnectionManager } from './rooms/ConnectionManager.js';
 import { RoomManager } from './rooms/RoomManager.js';
 import { BotManager } from './rooms/BotManager.js';
 import { MessageHandler } from './rooms/MessageHandler.js';
-import { handleApiRoute } from './api/routes.js';
+import { handleApiRoute, setCorsHeaders } from './api/routes.js';
 import { ensureSchema, seedAdmin } from './db/setup.js';
 import { cleanupOldLogs } from './logging/cleanup.js';
 
@@ -81,6 +81,7 @@ const server = createServer(async (req, res) => {
       const handled = await handleApiRoute(req, res, rooms, connections);
       if (handled) return;
     } catch {
+      setCorsHeaders(res);
       res.writeHead(500, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'Internal server error' }));
       return;

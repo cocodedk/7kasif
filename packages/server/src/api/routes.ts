@@ -10,7 +10,7 @@ const GAME_LOGS_DIR = join(process.cwd(), 'data', 'game-logs');
 
 const CORS_ORIGIN = process.env.CORS_ORIGIN || 'https://cocodedk.github.io';
 
-function setCorsHeaders(res: ServerResponse): void {
+export function setCorsHeaders(res: ServerResponse): void {
   res.setHeader('Access-Control-Allow-Origin', CORS_ORIGIN);
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
@@ -251,7 +251,7 @@ export async function handleApiRoute(
     rooms.removeRoom(code);
     for (const playerId of playerIds) {
       connections.send(playerId, {
-        type: 'MOVE_REJECTED',
+        type: 'ROOM_CLOSED',
         reason: 'Room closed by admin',
       });
     }
