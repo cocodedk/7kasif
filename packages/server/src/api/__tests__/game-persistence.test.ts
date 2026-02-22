@@ -209,8 +209,6 @@ describe('Game persistence', () => {
     });
 
     it('game continues even if saveRound fails', async () => {
-      mockSaveRound.mockRejectedValueOnce(new Error('DB timeout'));
-
       const roomCode = createAndJoinRoom();
 
       handler.handleMessage(ws1, JSON.stringify({
@@ -220,9 +218,28 @@ describe('Game persistence', () => {
 
       await flushPromises();
 
-      // The game is active and DB error won't crash it
-      const room = rooms.getRoom(roomCode);
-      expect(room?.gameState).not.toBeNull();
+      const room = rooms.getRoom(roomCode)!;
+      expect(room.dbSessionId).toBe(42);
+
+      // Pre-configure saveRound to fail, then directly invoke persistRoundAndScores
+      mockSaveRound.mockRejectedValueOnce(new Error('DB timeout'));
+      await (handler as any).persistRoundAndScores(room, 'user_1', 'user_2', 3, false, '7');
+      await flushPromises();
+
+      // saveRound was called and failed, but no error propagated
+      expect(mockSaveRound).toHaveBeenCalledWith(
+        42,
+        expect.any(Number),
+        expect.any(Number),
+        expect.any(String),
+        expect.any(String),
+        3,
+        false,
+        '7',
+      );
+
+      // Game state remains active — the DB error didn't crash anything
+      expect(room.gameState).not.toBeNull();
     });
 
     it('session ends even if saveScores fails', async () => {

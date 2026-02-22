@@ -18,7 +18,10 @@ import {
 } from '../db/tournaments.js';
 
 function extractUserId(playerId: string): number | null {
-  return playerId.startsWith('user_') ? parseInt(playerId.slice(5), 10) : null;
+  const match = playerId.match(/^user_(\d+)$/);
+  if (!match) return null;
+  const id = parseInt(match[1], 10);
+  return Number.isFinite(id) ? id : null;
 }
 
 export class MessageHandler {
@@ -314,12 +317,14 @@ export class MessageHandler {
     this.triggerBotTurn(room.code);
   }
 
-  private handleEndSession(playerId: string): void {
+  private async handleEndSession(playerId: string): Promise<void> {
     const room = this.validateHostAction(playerId, 'end the session');
     if (!room) return;
 
     // Persist scores and end tournament in DB before ending in-memory session
-    this.persistEndSession(room).catch(() => {});
+    await this.persistEndSession(room).catch((err) => {
+      console.error('[DB] Failed to persist end session:', err);
+    });
 
     const tournament = this.rooms.endSession(room.code);
     if (tournament) {

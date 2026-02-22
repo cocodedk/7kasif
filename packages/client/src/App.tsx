@@ -14,6 +14,8 @@ import { AdminScreen } from './screens/AdminScreen.js';
 import { StatsScreen } from './screens/StatsScreen.js';
 import { DevPreview } from './DevPreview.js';
 
+type SendMessage = ClientMessage | Omit<Extract<ClientMessage, { type: 'CREATE_ROOM' }>, 'token'> | Omit<Extract<ClientMessage, { type: 'JOIN_ROOM' }>, 'token'>;
+
 const DEV_PREVIEW = import.meta.env.VITE_DEV_PREVIEW === 'true';
 
 export function App() {
@@ -101,7 +103,6 @@ function AuthenticatedGame({
   }, [state.gameOver]);
 
   // Wrap send to inject token into CREATE_ROOM and JOIN_ROOM messages
-  type SendMessage = ClientMessage | Omit<Extract<ClientMessage, { type: 'CREATE_ROOM' }>, 'token'> | Omit<Extract<ClientMessage, { type: 'JOIN_ROOM' }>, 'token'>;
   const send = useCallback((msg: SendMessage) => {
     if (msg.type === 'CREATE_ROOM' || msg.type === 'JOIN_ROOM') {
       if (!token) {
@@ -144,7 +145,7 @@ function AuthenticatedGame({
           loserName={state.gameOver.reversed ? finisherName : nameOf(state.gameOver.loserId)}
           points={state.gameOver.points}
           reversed={state.gameOver.reversed}
-          lastCard={state.gameOver.finishingCard ?? null}
+          lastCard={state.gameOver.finishingCard}
           finishedByName={finisherName}
           onComplete={handleTransitionComplete}
         />
