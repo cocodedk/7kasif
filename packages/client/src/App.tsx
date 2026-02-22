@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import type { ClientMessage } from '@hafte-kasif/shared';
 import { useWebSocket } from './hooks/useWebSocket.js';
 import { useGameState } from './hooks/useGameState.js';
 import { useAuth } from './hooks/useAuth.js';
@@ -98,11 +99,12 @@ function AuthenticatedGame({
   }, [state.gameOver]);
 
   // Wrap send to inject token into CREATE_ROOM and JOIN_ROOM messages
-  const send = (msg: Parameters<typeof rawSend>[0]) => {
+  type SendMessage = ClientMessage | Omit<Extract<ClientMessage, { type: 'CREATE_ROOM' }>, 'token'> | Omit<Extract<ClientMessage, { type: 'JOIN_ROOM' }>, 'token'>;
+  const send = (msg: SendMessage) => {
     if (token && (msg.type === 'CREATE_ROOM' || msg.type === 'JOIN_ROOM')) {
-      rawSend({ ...msg, token });
+      rawSend({ ...msg, token } as ClientMessage);
     } else {
-      rawSend(msg);
+      rawSend(msg as ClientMessage);
     }
   };
 

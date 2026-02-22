@@ -78,7 +78,7 @@ const server = createServer(async (req, res) => {
   // Handle API routes first
   if (req.url?.startsWith('/api/')) {
     try {
-      const handled = await handleApiRoute(req, res);
+      const handled = await handleApiRoute(req, res, rooms, connections);
       if (handled) return;
     } catch {
       res.writeHead(500, { 'Content-Type': 'application/json' });

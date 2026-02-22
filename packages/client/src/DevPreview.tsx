@@ -30,6 +30,7 @@ const INITIAL_GAME: PlayerView = {
   deckCount: 22,
   pendingEffect: null,
   declaredSuit: null,
+  hasDrawnThisTurn: false,
   mode: 'standard',
 };
 

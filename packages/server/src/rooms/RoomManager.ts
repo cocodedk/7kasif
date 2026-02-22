@@ -155,6 +155,10 @@ export class RoomManager {
     return doGetTournamentView(room);
   }
 
+  getAllRooms(): Room[] {
+    return Array.from(this.rooms.values());
+  }
+
   getRoomCodes(): Set<string> {
     return new Set(this.rooms.keys());
   }

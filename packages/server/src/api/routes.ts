@@ -3,6 +3,8 @@ import { readdirSync, readFileSync, statSync } from 'fs';
 import { join } from 'path';
 import { createUser, sendMagicLink, verifyMagicToken, verifyToken } from '../auth/auth.js';
 import { getLeaderboard, getPlayerStats, getTournamentHistory } from '../db/leaderboard.js';
+import type { RoomManager } from '../rooms/RoomManager.js';
+import type { ConnectionManager } from '../rooms/ConnectionManager.js';
 
 const GAME_LOGS_DIR = join(process.cwd(), 'data', 'game-logs');
 
@@ -10,7 +12,7 @@ const CORS_ORIGIN = process.env.CORS_ORIGIN || 'https://cocodedk.github.io';
 
 function setCorsHeaders(res: ServerResponse): void {
   res.setHeader('Access-Control-Allow-Origin', CORS_ORIGIN);
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 }
 
@@ -57,6 +59,8 @@ function getAdminFromHeader(req: IncomingMessage): { userId: number; email: stri
 export async function handleApiRoute(
   req: IncomingMessage,
   res: ServerResponse,
+  rooms?: RoomManager,
+  connections?: ConnectionManager,
 ): Promise<boolean> {
   const url = req.url || '';
   const method = req.method || 'GET';
@@ -194,6 +198,64 @@ export async function handleApiRoute(
     } catch {
       json(res, 404, { error: 'Log file not found' });
     }
+    return true;
+  }
+
+  // GET /api/admin/rooms — list active rooms
+  if (url === '/api/admin/rooms' && method === 'GET') {
+    const admin = getAdminFromHeader(req);
+    if (!admin) {
+      json(res, 403, { error: 'Admin access required' });
+      return true;
+    }
+    if (!rooms || !connections) {
+      json(res, 500, { error: 'Room management unavailable' });
+      return true;
+    }
+    const data = rooms.getAllRooms().map(room => ({
+      code: room.code,
+      players: room.players.map(p => ({
+        id: p.id,
+        name: p.name,
+        connected: connections.isConnected(p.id),
+      })),
+      hostId: room.hostId,
+      mode: room.mode,
+      phase: room.gameState ? room.gameState.phase : 'lobby',
+      createdAt: room.createdAt,
+      lastActivityAt: room.lastActivityAt,
+    }));
+    json(res, 200, data);
+    return true;
+  }
+
+  // DELETE /api/admin/rooms/:code — force-stop a room
+  const roomDeleteMatch = url.match(/^\/api\/admin\/rooms\/([A-Z0-9]{4})$/);
+  if (roomDeleteMatch && method === 'DELETE') {
+    const admin = getAdminFromHeader(req);
+    if (!admin) {
+      json(res, 403, { error: 'Admin access required' });
+      return true;
+    }
+    if (!rooms || !connections) {
+      json(res, 500, { error: 'Room management unavailable' });
+      return true;
+    }
+    const code = roomDeleteMatch[1];
+    const room = rooms.getRoom(code);
+    if (!room) {
+      json(res, 404, { error: 'Room not found' });
+      return true;
+    }
+    const playerIds = room.players.map(p => p.id);
+    rooms.removeRoom(code);
+    for (const playerId of playerIds) {
+      connections.send(playerId, {
+        type: 'MOVE_REJECTED',
+        reason: 'Room closed by admin',
+      });
+    }
+    json(res, 200, { ok: true });
     return true;
   }
 
