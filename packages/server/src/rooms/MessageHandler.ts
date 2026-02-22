@@ -13,6 +13,7 @@ import {
   saveSessionPlayers,
   saveRound,
   saveScores,
+  saveScoreSnapshots,
   endTournament,
 } from '../db/tournaments.js';
 
@@ -450,6 +451,18 @@ export class MessageHandler {
         userIdMap.set(p.id, extractUserId(p.id));
       }
       await saveScores(room.dbSessionId, room.tournament.playerScores, userIdMap);
+
+      // Save per-player score snapshots for history graph
+      await saveScoreSnapshots(
+        room.dbSessionId,
+        roundNumber,
+        room.tournament.playerScores.map(score => ({
+          userId: extractUserId(score.playerId),
+          netScore: score.netScore,
+          plusClusters: score.plusClusters,
+          minusClusters: score.minusClusters,
+        })),
+      );
     } catch (err) {
       console.error('[DB] Failed to persist round:', err);
     }

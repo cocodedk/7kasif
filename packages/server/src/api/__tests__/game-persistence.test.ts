@@ -29,6 +29,7 @@ const mockSaveTournament = vi.fn().mockResolvedValue(42);
 const mockSaveSessionPlayers = vi.fn().mockResolvedValue(undefined);
 const mockSaveRound = vi.fn().mockResolvedValue(1);
 const mockSaveScores = vi.fn().mockResolvedValue(undefined);
+const mockSaveScoreSnapshots = vi.fn().mockResolvedValue(undefined);
 const mockEndTournament = vi.fn().mockResolvedValue(undefined);
 
 vi.mock('../../db/tournaments.js', () => ({
@@ -36,6 +37,7 @@ vi.mock('../../db/tournaments.js', () => ({
   saveSessionPlayers: (...args: any[]) => mockSaveSessionPlayers(...args),
   saveRound: (...args: any[]) => mockSaveRound(...args),
   saveScores: (...args: any[]) => mockSaveScores(...args),
+  saveScoreSnapshots: (...args: any[]) => mockSaveScoreSnapshots(...args),
   endTournament: (...args: any[]) => mockEndTournament(...args),
 }));
 
@@ -171,6 +173,14 @@ describe('Game persistence', () => {
 
       // Should NOT call saveTournament again since dbSessionId is already set
       expect(mockSaveTournament).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('saveScoreSnapshots mock is wired', () => {
+    it('saveScoreSnapshots is available as a mock', () => {
+      // Verify the mock is registered so persistRoundAndScores can call it
+      expect(mockSaveScoreSnapshots).toBeDefined();
+      expect(mockSaveScoreSnapshots).not.toHaveBeenCalled();
     });
   });
 

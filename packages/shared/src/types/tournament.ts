@@ -42,3 +42,12 @@ export interface TournamentView {
   rounds: RoundResult[];
   currentRound: number;
 }
+
+export interface ScoreHistoryEntry {
+  sessionId: number;
+  roundNumber: number;
+  netScore: number;
+  plusClusters: number;
+  minusClusters: number;
+  snapshotAt: string;
+}

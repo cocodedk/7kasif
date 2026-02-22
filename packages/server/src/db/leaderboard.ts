@@ -1,4 +1,5 @@
 import { getPool } from '../auth/db.js';
+import type { ScoreHistoryEntry } from '@hafte-kasif/shared';
 
 export interface LeaderboardEntry {
   userId: number | null;
@@ -136,8 +137,7 @@ export async function getTournamentHistory(): Promise<TournamentSummary[]> {
       (SELECT COUNT(*) FROM session_players sp WHERE sp.session_id = s.id) AS player_count,
       (SELECT COUNT(*) FROM rounds r WHERE r.session_id = s.id) AS round_count
     FROM sessions s
-    WHERE s.ended_at IS NOT NULL
-    ORDER BY s.ended_at DESC
+    ORDER BY s.started_at DESC
     LIMIT 50
   `);
 
@@ -168,9 +168,8 @@ export async function getTournamentsByYear(year: number): Promise<TournamentSumm
       (SELECT COUNT(*) FROM session_players sp WHERE sp.session_id = s.id) AS player_count,
       (SELECT COUNT(*) FROM rounds r WHERE r.session_id = s.id) AS round_count
     FROM sessions s
-    WHERE s.ended_at IS NOT NULL
-      AND s.started_at >= $1 AND s.started_at < $2
-    ORDER BY s.ended_at DESC
+    WHERE s.started_at >= $1 AND s.started_at < $2
+    ORDER BY s.started_at DESC
     LIMIT 50
   `, [yearStart, yearEnd]);
 
@@ -183,6 +182,25 @@ export async function getTournamentsByYear(year: number): Promise<TournamentSumm
     endedAt: row.ended_at,
     playerCount: parseInt(row.player_count, 10),
     roundCount: parseInt(row.round_count, 10),
+  }));
+}
+
+export async function getScoreHistory(userId: number): Promise<ScoreHistoryEntry[]> {
+  const pool = getPool();
+  const result = await pool.query(
+    `SELECT session_id, round_number, net_score, plus_clusters, minus_clusters, snapshot_at
+     FROM score_snapshots
+     WHERE user_id = $1
+     ORDER BY snapshot_at ASC`,
+    [userId],
+  );
+  return result.rows.map((row) => ({
+    sessionId: row.session_id,
+    roundNumber: row.round_number,
+    netScore: row.net_score,
+    plusClusters: row.plus_clusters,
+    minusClusters: row.minus_clusters,
+    snapshotAt: row.snapshot_at instanceof Date ? row.snapshot_at.toISOString() : String(row.snapshot_at ?? ''),
   }));
 }
 

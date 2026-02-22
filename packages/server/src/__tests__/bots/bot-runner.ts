@@ -25,6 +25,7 @@ export class BotRunner {
   private hostBot: BotInstance | null = null;
   private onAllRoundsDone: (() => void) | null = null;
   private allRoundsDoneTriggered = false;
+  private cardsPerPlayer = 5;
 
   constructor(serverUrl: string = 'ws://localhost:3000/ws') {
     this.serverUrl = serverUrl;
@@ -193,7 +194,7 @@ export class BotRunner {
           if (this.roundsPlayed < this.maxRounds) {
             setTimeout(() => {
               console.log(`\n--- Starting round ${this.roundsPlayed + 1}/${this.maxRounds} ---`);
-              bot.client.send({ type: 'NEXT_ROUND', cardsPerPlayer: 5 });
+              bot.client.send({ type: 'NEXT_ROUND', cardsPerPlayer: this.cardsPerPlayer });
             }, 1000);
           }
         }
@@ -217,7 +218,8 @@ export class BotRunner {
     console.log('─'.repeat(50));
   }
 
-  async startAutonomous(rounds: number = 1): Promise<void> {
+  async startAutonomous(rounds: number = 1, cardsPerPlayer: number = 5): Promise<void> {
+    this.cardsPerPlayer = cardsPerPlayer;
     this.maxRounds = rounds;
     this.roundsPlayed = 0;
     this.allRoundsDoneTriggered = false;
@@ -287,7 +289,7 @@ export class BotRunner {
 
     // First bot starts the game
     console.log(`All bots joined. ${firstCred.displayName} (${firstBot.playerId}) starting game...`);
-    firstClient.send({ type: 'START_GAME', cardsPerPlayer: 5 });
+    firstClient.send({ type: 'START_GAME', cardsPerPlayer: this.cardsPerPlayer });
     console.log(`START_GAME sent. Playing ${rounds} round${rounds > 1 ? 's' : ''}...`);
 
     // Wait for all rounds to complete, then stop

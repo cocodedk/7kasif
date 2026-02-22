@@ -61,8 +61,20 @@ CREATE TABLE IF NOT EXISTS round_actions (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS score_snapshots (
+  id SERIAL PRIMARY KEY,
+  user_id INT REFERENCES users(id),
+  session_id INT REFERENCES sessions(id),
+  round_number INT NOT NULL,
+  net_score INT NOT NULL,
+  plus_clusters INT NOT NULL,
+  minus_clusters INT NOT NULL,
+  snapshot_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 CREATE INDEX IF NOT EXISTS idx_sessions_room_code ON sessions(room_code);
 CREATE INDEX IF NOT EXISTS idx_session_players_session_id ON session_players(session_id);
 CREATE INDEX IF NOT EXISTS idx_session_players_user_id ON session_players(user_id);
 CREATE INDEX IF NOT EXISTS idx_rounds_session_id ON rounds(session_id);
 CREATE INDEX IF NOT EXISTS idx_round_actions_round_id ON round_actions(round_id);
+CREATE INDEX IF NOT EXISTS idx_score_snapshots_user_id ON score_snapshots(user_id);

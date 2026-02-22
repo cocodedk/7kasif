@@ -2,7 +2,7 @@ import type { IncomingMessage, ServerResponse } from 'http';
 import { readdirSync, readFileSync, statSync } from 'fs';
 import { join } from 'path';
 import { createUser, sendMagicLink, verifyMagicToken, verifyToken } from '../auth/auth.js';
-import { getLeaderboard, getPlayerStats, getTournamentHistory, getTournamentsByYear } from '../db/leaderboard.js';
+import { getLeaderboard, getPlayerStats, getScoreHistory, getTournamentHistory, getTournamentsByYear } from '../db/leaderboard.js';
 import { loadTournament } from '../db/tournaments.js';
 import type { RoomManager } from '../rooms/RoomManager.js';
 import type { ConnectionManager } from '../rooms/ConnectionManager.js';
@@ -205,6 +205,20 @@ export async function handleApiRoute(
       }
     } catch (err: any) {
       json(res, 500, { error: 'Failed to fetch player stats' });
+    }
+    return true;
+  }
+
+  // GET /api/players/:userId/score-history
+  const scoreHistoryMatch = parsedUrl.pathname.match(/^\/api\/players\/(\d+)\/score-history$/);
+  if (scoreHistoryMatch && method === 'GET') {
+    try {
+      const userId = parseInt(scoreHistoryMatch[1], 10);
+      const history = await getScoreHistory(userId);
+      json(res, 200, history);
+    } catch (err: any) {
+      console.error('Score history error:', err);
+      json(res, 500, { error: 'Failed to fetch score history' });
     }
     return true;
   }
