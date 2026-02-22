@@ -88,6 +88,7 @@ export interface GameOverMessage {
   points: number;
   reversed: boolean;
   hands: PlayerHandSummary[];
+  finishingCard: Card | null;
 }
 
 export interface TournamentUpdateMessage {
@@ -98,6 +99,11 @@ export interface TournamentUpdateMessage {
 export interface SessionEndedMessage {
   type: 'SESSION_ENDED';
   tournament: TournamentView;
+}
+
+export interface RoomClosedMessage {
+  type: 'ROOM_CLOSED';
+  reason: string;
 }
 
 export interface DebugGameInitMessage {
@@ -114,6 +120,7 @@ export type ServerMessage =
   | RoomJoinedMessage
   | GameStateMessage
   | MoveRejectedMessage
+  | RoomClosedMessage
   | GameOverMessage
   | TournamentUpdateMessage
   | SessionEndedMessage

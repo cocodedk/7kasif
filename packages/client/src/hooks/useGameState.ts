@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useReducer } from 'react';
-import type { ServerMessage, PlayerView, TournamentView, GameEvent, PlayerHandSummary } from '@hafte-kasif/shared';
+import type { ServerMessage, PlayerView, TournamentView, GameEvent, PlayerHandSummary, Card } from '@hafte-kasif/shared';
 
 interface LobbyState {
   screen: 'home' | 'waiting';
@@ -14,6 +14,7 @@ interface GameOverInfo {
   points: number;
   reversed: boolean;
   hands: PlayerHandSummary[];
+  finishingCard: Card | null;
 }
 
 interface AppState {
@@ -119,6 +120,7 @@ export function useGameState(onMessage: (cb: (msg: ServerMessage) => void) => vo
             points: msg.points,
             reversed: msg.reversed,
             hands: msg.hands,
+            finishingCard: msg.finishingCard,
           },
         });
         break;
@@ -130,6 +132,9 @@ export function useGameState(onMessage: (cb: (msg: ServerMessage) => void) => vo
         break;
       case 'MOVE_REJECTED':
         dispatch({ type: 'ERROR', reason: msg.reason });
+        break;
+      case 'ROOM_CLOSED':
+        dispatch({ type: 'RESET' });
         break;
     }
   }, []);

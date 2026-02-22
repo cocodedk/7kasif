@@ -7,7 +7,7 @@ import { ConnectionManager } from './rooms/ConnectionManager.js';
 import { RoomManager } from './rooms/RoomManager.js';
 import { BotManager } from './rooms/BotManager.js';
 import { MessageHandler } from './rooms/MessageHandler.js';
-import { handleApiRoute } from './api/routes.js';
+import { handleApiRoute, setCorsHeaders } from './api/routes.js';
 import { ensureSchema, seedAdmin } from './db/setup.js';
 import { cleanupOldLogs } from './logging/cleanup.js';
 
@@ -42,6 +42,14 @@ function proxyToVite(req: import('http').IncomingMessage, res: import('http').Se
   req.pipe(proxyReq);
 }
 
+const SECURITY_HEADERS: Record<string, string> = {
+  'Content-Security-Policy': "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; font-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
+  'X-Frame-Options': 'DENY',
+  'X-Content-Type-Options': 'nosniff',
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
+  'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
+};
+
 function serveStatic(req: import('http').IncomingMessage, res: import('http').ServerResponse): void {
   const url = req.url === '/' ? '/index.html' : req.url!;
   const filePath = join(CLIENT_DIR, url);
@@ -59,13 +67,13 @@ function serveStatic(req: import('http').IncomingMessage, res: import('http').Se
       webmanifest: 'application/manifest+json',
     };
 
-    res.writeHead(200, { 'Content-Type': contentType[ext!] || 'application/octet-stream' });
+    res.writeHead(200, { 'Content-Type': contentType[ext!] || 'application/octet-stream', ...SECURITY_HEADERS });
     res.end(readFileSync(filePath));
   } else {
     // SPA fallback
     const indexPath = join(CLIENT_DIR, 'index.html');
     if (existsSync(indexPath)) {
-      res.writeHead(200, { 'Content-Type': 'text/html' });
+      res.writeHead(200, { 'Content-Type': 'text/html', ...SECURITY_HEADERS });
       res.end(readFileSync(indexPath));
     } else {
       res.writeHead(404);
@@ -78,9 +86,10 @@ const server = createServer(async (req, res) => {
   // Handle API routes first
   if (req.url?.startsWith('/api/')) {
     try {
-      const handled = await handleApiRoute(req, res);
+      const handled = await handleApiRoute(req, res, rooms, connections);
       if (handled) return;
     } catch {
+      setCorsHeaders(res);
       res.writeHead(500, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'Internal server error' }));
       return;

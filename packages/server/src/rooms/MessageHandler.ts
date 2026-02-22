@@ -8,6 +8,21 @@ import { applyAction } from '../engine/game.js';
 import { filterEventsForPlayer } from '../engine/view.js';
 import { verifyToken } from '../auth/auth.js';
 import { GameLogger } from '../logging/game-logger.js';
+import {
+  saveTournament,
+  saveSessionPlayers,
+  saveRound,
+  saveScores,
+  saveScoreSnapshots,
+  endTournament,
+} from '../db/tournaments.js';
+
+function extractUserId(playerId: string): number | null {
+  const match = playerId.match(/^user_(\d+)$/);
+  if (!match) return null;
+  const id = parseInt(match[1], 10);
+  return Number.isFinite(id) ? id : null;
+}
 
 export class MessageHandler {
   private loggers = new Map<string, GameLogger>();
@@ -134,6 +149,16 @@ export class MessageHandler {
       isAceChainFull,
     );
 
+    // Persist round and updated scores to DB (after in-memory update so rounds.length is correct)
+    this.persistRoundAndScores(
+      room,
+      gameOverEvent.winnerId,
+      gameOverEvent.loserId,
+      gameOverEvent.points,
+      gameOverEvent.reversed,
+      finishingValue,
+    ).catch(() => {});
+
     for (const p of room.players) {
       this.connections.send(p.id, {
         type: 'GAME_OVER',
@@ -142,6 +167,7 @@ export class MessageHandler {
         points: gameOverEvent.points,
         reversed: gameOverEvent.reversed,
         hands: gameOverEvent.hands,
+        finishingCard: finishingCard ?? null,
       } satisfies ServerMessage);
     }
 
@@ -224,6 +250,11 @@ export class MessageHandler {
       return;
     }
 
+    // Persist tournament to DB on first round
+    if (room.dbSessionId === null) {
+      this.persistNewTournament(room).catch(() => {});
+    }
+
     this.broadcastDebugGameInit(room, result, cardsPerPlayer);
     this.broadcastGameState(room.code);
     this.broadcastTournamentUpdate(room.code);
@@ -286,9 +317,14 @@ export class MessageHandler {
     this.triggerBotTurn(room.code);
   }
 
-  private handleEndSession(playerId: string): void {
+  private async handleEndSession(playerId: string): Promise<void> {
     const room = this.validateHostAction(playerId, 'end the session');
     if (!room) return;
+
+    // Persist scores and end tournament in DB before ending in-memory session
+    await this.persistEndSession(room).catch((err) => {
+      console.error('[DB] Failed to persist end session:', err);
+    });
 
     const tournament = this.rooms.endSession(room.code);
     if (tournament) {
@@ -381,6 +417,73 @@ export class MessageHandler {
         type: 'TOURNAMENT_UPDATE',
         tournament,
       } satisfies ServerMessage);
+    }
+  }
+
+  private async persistNewTournament(room: Room): Promise<void> {
+    try {
+      const dbSessionId = await saveTournament(room.tournament.id, room.code, room.mode);
+      room.dbSessionId = dbSessionId;
+      const players = room.players.map(p => ({
+        userId: extractUserId(p.id),
+        playerName: p.name,
+      }));
+      await saveSessionPlayers(dbSessionId, players);
+    } catch (err) {
+      console.error('[DB] Failed to persist tournament:', err);
+    }
+  }
+
+  private async persistRoundAndScores(room: Room, winnerId: string, loserId: string, points: number, reversed: boolean, finishingCard: string): Promise<void> {
+    if (room.dbSessionId === null) return;
+    try {
+      const winnerPlayer = room.players.find(p => p.id === winnerId);
+      const loserPlayer = room.players.find(p => p.id === loserId);
+      const roundNumber = room.tournament.rounds.length;
+      await saveRound(
+        room.dbSessionId,
+        roundNumber,
+        room.cardsPerPlayer,
+        winnerPlayer?.name ?? winnerId,
+        loserPlayer?.name ?? loserId,
+        points,
+        reversed,
+        finishingCard,
+      );
+      // Also persist current scores so leaderboard updates even if session is never ended
+      const userIdMap = new Map<string, number | null>();
+      for (const p of room.players) {
+        userIdMap.set(p.id, extractUserId(p.id));
+      }
+      await saveScores(room.dbSessionId, room.tournament.playerScores, userIdMap);
+
+      // Save per-player score snapshots for history graph
+      await saveScoreSnapshots(
+        room.dbSessionId,
+        roundNumber,
+        room.tournament.playerScores.map(score => ({
+          userId: extractUserId(score.playerId),
+          netScore: score.netScore,
+          plusClusters: score.plusClusters,
+          minusClusters: score.minusClusters,
+        })),
+      );
+    } catch (err) {
+      console.error('[DB] Failed to persist round:', err);
+    }
+  }
+
+  private async persistEndSession(room: Room): Promise<void> {
+    if (room.dbSessionId === null) return;
+    try {
+      const userIdMap = new Map<string, number | null>();
+      for (const p of room.players) {
+        userIdMap.set(p.id, extractUserId(p.id));
+      }
+      await saveScores(room.dbSessionId, room.tournament.playerScores, userIdMap);
+      await endTournament(room.dbSessionId);
+    } catch (err) {
+      console.error('[DB] Failed to persist end session:', err);
     }
   }
 

@@ -8,11 +8,12 @@ export DATABASE_URL="postgresql://hk:devpass@localhost:5432/hafte_kasif"
 export JWT_SECRET="dev-jwt-secret-change-in-production"
 
 ROOM_CODE="${1:-}"
+CARDS="${2:-2}"
 
 if [ -n "$ROOM_CODE" ]; then
-  echo "Joining room $ROOM_CODE with 3 bots (you are the 4th player)..."
+  echo "Joining room $ROOM_CODE with 3 bots ($CARDS cards per player)..."
 else
-  echo "Starting autonomous 4-bot game..."
+  echo "Starting autonomous 4-bot game ($CARDS cards per player)..."
 fi
 
-exec npx tsx "$PROJECT_DIR/packages/server/src/__tests__/bots/run-bots.ts" $ROOM_CODE
+exec npx tsx "$PROJECT_DIR/packages/server/src/__tests__/bots/run-bots.ts" --cards="$CARDS" $ROOM_CODE

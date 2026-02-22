@@ -2,15 +2,18 @@ import type { IncomingMessage, ServerResponse } from 'http';
 import { readdirSync, readFileSync, statSync } from 'fs';
 import { join } from 'path';
 import { createUser, sendMagicLink, verifyMagicToken, verifyToken } from '../auth/auth.js';
-import { getLeaderboard, getPlayerStats, getTournamentHistory } from '../db/leaderboard.js';
+import { getLeaderboard, getPlayerStats, getScoreHistory, getTournamentHistory, getTournamentsByYear } from '../db/leaderboard.js';
+import { loadTournament } from '../db/tournaments.js';
+import type { RoomManager } from '../rooms/RoomManager.js';
+import type { ConnectionManager } from '../rooms/ConnectionManager.js';
 
 const GAME_LOGS_DIR = join(process.cwd(), 'data', 'game-logs');
 
 const CORS_ORIGIN = process.env.CORS_ORIGIN || 'https://cocodedk.github.io';
 
-function setCorsHeaders(res: ServerResponse): void {
+export function setCorsHeaders(res: ServerResponse): void {
   res.setHeader('Access-Control-Allow-Origin', CORS_ORIGIN);
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 }
 
@@ -57,6 +60,8 @@ function getAdminFromHeader(req: IncomingMessage): { userId: number; email: stri
 export async function handleApiRoute(
   req: IncomingMessage,
   res: ServerResponse,
+  rooms?: RoomManager,
+  connections?: ConnectionManager,
 ): Promise<boolean> {
   const url = req.url || '';
   const method = req.method || 'GET';
@@ -116,7 +121,25 @@ export async function handleApiRoute(
     return true;
   }
 
-  if (url === '/api/leaderboard' && method === 'GET') {
+  const parsedUrl = new URL(url, 'http://localhost');
+
+  if (parsedUrl.pathname === '/api/leaderboard' && method === 'GET') {
+    const yearParam = parsedUrl.searchParams.get('year');
+    if (yearParam !== null) {
+      const year = parseInt(yearParam, 10);
+      if (isNaN(year) || year < 2000 || year > 2100) {
+        json(res, 400, { error: 'Invalid year parameter' });
+        return true;
+      }
+      try {
+        const leaderboard = await getLeaderboard(year);
+        json(res, 200, leaderboard);
+      } catch (err: any) {
+        console.error('Leaderboard error:', err);
+        json(res, 500, { error: 'Failed to fetch leaderboard' });
+      }
+      return true;
+    }
     try {
       const leaderboard = await getLeaderboard();
       json(res, 200, leaderboard);
@@ -127,7 +150,22 @@ export async function handleApiRoute(
     return true;
   }
 
-  if (url === '/api/tournaments' && method === 'GET') {
+  if (parsedUrl.pathname === '/api/tournaments' && method === 'GET') {
+    const yearParam = parsedUrl.searchParams.get('year');
+    if (yearParam !== null) {
+      const year = parseInt(yearParam, 10);
+      if (isNaN(year) || year < 2000 || year > 2100) {
+        json(res, 400, { error: 'Invalid year parameter' });
+        return true;
+      }
+      try {
+        const tournaments = await getTournamentsByYear(year);
+        json(res, 200, tournaments);
+      } catch (err: any) {
+        json(res, 500, { error: 'Failed to fetch tournaments' });
+      }
+      return true;
+    }
     try {
       const tournaments = await getTournamentHistory();
       json(res, 200, tournaments);
@@ -137,8 +175,25 @@ export async function handleApiRoute(
     return true;
   }
 
+  // GET /api/tournaments/:id — tournament detail
+  const tournamentDetailMatch = parsedUrl.pathname.match(/^\/api\/tournaments\/(\d+)$/);
+  if (tournamentDetailMatch && method === 'GET') {
+    try {
+      const id = parseInt(tournamentDetailMatch[1], 10);
+      const tournament = await loadTournament(id);
+      if (!tournament) {
+        json(res, 404, { error: 'Tournament not found' });
+      } else {
+        json(res, 200, tournament);
+      }
+    } catch (err: any) {
+      json(res, 500, { error: 'Failed to fetch tournament' });
+    }
+    return true;
+  }
+
   // /api/players/:id/stats
-  const playerStatsMatch = url.match(/^\/api\/players\/(\d+)\/stats$/);
+  const playerStatsMatch = parsedUrl.pathname.match(/^\/api\/players\/(\d+)\/stats$/);
   if (playerStatsMatch && method === 'GET') {
     try {
       const userId = parseInt(playerStatsMatch[1], 10);
@@ -150,6 +205,20 @@ export async function handleApiRoute(
       }
     } catch (err: any) {
       json(res, 500, { error: 'Failed to fetch player stats' });
+    }
+    return true;
+  }
+
+  // GET /api/players/:userId/score-history
+  const scoreHistoryMatch = parsedUrl.pathname.match(/^\/api\/players\/(\d+)\/score-history$/);
+  if (scoreHistoryMatch && method === 'GET') {
+    try {
+      const userId = parseInt(scoreHistoryMatch[1], 10);
+      const history = await getScoreHistory(userId);
+      json(res, 200, history);
+    } catch (err: any) {
+      console.error('Score history error:', err);
+      json(res, 500, { error: 'Failed to fetch score history' });
     }
     return true;
   }
@@ -193,6 +262,74 @@ export async function handleApiRoute(
       res.end(content);
     } catch {
       json(res, 404, { error: 'Log file not found' });
+    }
+    return true;
+  }
+
+  // GET /api/admin/rooms — list active rooms
+  if (url === '/api/admin/rooms' && method === 'GET') {
+    const admin = getAdminFromHeader(req);
+    if (!admin) {
+      json(res, 403, { error: 'Admin access required' });
+      return true;
+    }
+    if (!rooms || !connections) {
+      json(res, 500, { error: 'Room management unavailable' });
+      return true;
+    }
+    try {
+      const data = rooms.getAllRooms().map(room => ({
+        code: room.code,
+        players: room.players.map(p => ({
+          id: p.id,
+          name: p.name,
+          connected: connections.isConnected(p.id),
+        })),
+        hostId: room.hostId,
+        mode: room.mode,
+        phase: room.gameState ? room.gameState.phase : 'lobby',
+        createdAt: room.createdAt,
+        lastActivityAt: room.lastActivityAt,
+      }));
+      json(res, 200, data);
+    } catch (err: any) {
+      console.error('Admin rooms error:', err);
+      json(res, 500, { error: 'Failed to fetch rooms' });
+    }
+    return true;
+  }
+
+  // DELETE /api/admin/rooms/:code — force-stop a room
+  const roomDeleteMatch = url.match(/^\/api\/admin\/rooms\/([A-Z0-9]{4})$/);
+  if (roomDeleteMatch && method === 'DELETE') {
+    const admin = getAdminFromHeader(req);
+    if (!admin) {
+      json(res, 403, { error: 'Admin access required' });
+      return true;
+    }
+    if (!rooms || !connections) {
+      json(res, 500, { error: 'Room management unavailable' });
+      return true;
+    }
+    const code = roomDeleteMatch[1];
+    const room = rooms.getRoom(code);
+    if (!room) {
+      json(res, 404, { error: 'Room not found' });
+      return true;
+    }
+    try {
+      const playerIds = room.players.map(p => p.id);
+      rooms.removeRoom(code);
+      for (const playerId of playerIds) {
+        connections.send(playerId, {
+          type: 'ROOM_CLOSED',
+          reason: 'Room closed by admin',
+        });
+      }
+      json(res, 200, { ok: true });
+    } catch (err: any) {
+      console.error('Admin room delete error:', err);
+      json(res, 500, { error: 'Failed to stop room' });
     }
     return true;
   }

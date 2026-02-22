@@ -118,32 +118,51 @@ describe('Scoring Table', () => {
 });
 
 describe('Tournament RoomManager', () => {
-  it('should rotate dealer each round', async () => {
+  it('should make loser of previous round the dealer', async () => {
     const { RoomManager } = await import('../../rooms/RoomManager.js');
     const rm = new RoomManager();
     const room = rm.createRoom('h', 'Host', 'standard');
     rm.joinRoom(room.code, 'p2', 'P2');
     rm.joinRoom(room.code, 'p3', 'P3');
 
-    // Round 1: dealer is player index 0 (h)
+    // Round 1: first round, host is dealer
     const r1 = rm.startGame(room.code, 3);
     expect(r1).not.toBeNull();
     expect(r1!.state.dealerId).toBe('h');
 
-    // Record round result
+    // p3 loses round 1
     rm.recordRoundResult(room.code, 'p2', 'p3', 1, false, '4', false);
 
-    // Round 2: dealer rotates to player index 1 (p2)
+    // Round 2: loser (p3) becomes dealer
     const r2 = rm.startGame(room.code, 3);
     expect(r2).not.toBeNull();
-    expect(r2!.state.dealerId).toBe('p2');
+    expect(r2!.state.dealerId).toBe('p3');
 
-    rm.recordRoundResult(room.code, 'h', 'p3', 1, false, '5', false);
+    // h loses round 2
+    rm.recordRoundResult(room.code, 'p2', 'h', 1, false, '5', false);
 
-    // Round 3: dealer rotates to player index 2 (p3)
+    // Round 3: loser (h) becomes dealer
     const r3 = rm.startGame(room.code, 3);
     expect(r3).not.toBeNull();
-    expect(r3!.state.dealerId).toBe('p3');
+    expect(r3!.state.dealerId).toBe('h');
+  });
+
+  it('should use winnerId as dealer when round was reversed', async () => {
+    const { RoomManager } = await import('../../rooms/RoomManager.js');
+    const rm = new RoomManager();
+    const room = rm.createRoom('h', 'Host', 'standard');
+    rm.joinRoom(room.code, 'p2', 'P2');
+    rm.joinRoom(room.code, 'p3', 'P3');
+
+    // Round 1
+    rm.startGame(room.code, 3);
+    // Reversed round: winnerId is actually the loser
+    rm.recordRoundResult(room.code, 'h', 'p2', 1, true, '4', false);
+
+    // Round 2: reversed means winnerId (h) is the real loser → dealer
+    const r2 = rm.startGame(room.code, 3);
+    expect(r2).not.toBeNull();
+    expect(r2!.state.dealerId).toBe('h');
   });
 
   it('should accumulate scores across rounds', async () => {

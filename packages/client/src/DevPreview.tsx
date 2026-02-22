@@ -30,6 +30,7 @@ const INITIAL_GAME: PlayerView = {
   deckCount: 22,
   pendingEffect: null,
   declaredSuit: null,
+  hasDrawnThisTurn: false,
   mode: 'standard',
 };
 
@@ -83,6 +84,7 @@ export function DevPreview() {
           opponents: newOpponents,
           topDiscard: action.card,
           declaredSuit: action.declaredSuit ?? null,
+          hasDrawnThisTurn: false,
         };
       });
       setHasDrawn(false);
@@ -103,6 +105,7 @@ export function DevPreview() {
         ...prev,
         myHand: [...prev.myHand, card],
         deckCount: prev.deckCount - 1,
+        hasDrawnThisTurn: true,
       }));
       setHasDrawn(true);
       setError(null);
@@ -113,6 +116,7 @@ export function DevPreview() {
       }
       setHasDrawn(false);
       setError(null);
+      setGame(prev => ({ ...prev, hasDrawnThisTurn: false }));
       passTurnBriefly(setGame);
     }
   }, [hasDrawn]);

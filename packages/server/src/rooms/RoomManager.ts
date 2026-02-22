@@ -25,6 +25,8 @@ export interface Room {
   tournament: TournamentSession;
   createdAt: number;
   lastActivityAt: number;
+  dbSessionId: number | null;
+  cardsPerPlayer: number;
 }
 
 const ROOM_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
@@ -54,6 +56,8 @@ export class RoomManager {
       },
       createdAt: Date.now(),
       lastActivityAt: Date.now(),
+      dbSessionId: null,
+      cardsPerPlayer: 0,
     };
     this.rooms.set(code, room);
     return room;
@@ -103,10 +107,14 @@ export class RoomManager {
       );
     }
 
-    // Rotate dealer: host first round, then next player each round
-    const roundNum = room.tournament.rounds.length;
-    const dealerIdx = roundNum % room.players.length;
-    const dealerId = room.players[dealerIdx].id;
+    // Loser of previous round becomes dealer; first round: host is dealer
+    let dealerId: string;
+    const lastRound = room.tournament.rounds[room.tournament.rounds.length - 1];
+    if (lastRound) {
+      dealerId = lastRound.reversed ? lastRound.winnerId : lastRound.loserId;
+    } else {
+      dealerId = room.players[0].id;
+    }
 
     // Capture the shuffled deck for debug logging
     let initialDeck: Card[] = [];
@@ -125,6 +133,7 @@ export class RoomManager {
     );
 
     room.gameState = state;
+    room.cardsPerPlayer = cardsPerPlayer;
     room.lastActivityAt = Date.now();
     return { state, deck: initialDeck };
   }
@@ -153,6 +162,10 @@ export class RoomManager {
     const room = this.rooms.get(code);
     if (!room) return null;
     return doGetTournamentView(room);
+  }
+
+  getAllRooms(): Room[] {
+    return Array.from(this.rooms.values());
   }
 
   getRoomCodes(): Set<string> {

@@ -61,6 +61,7 @@ export class BotManager {
         hasAnnounced: false,
         rejectedCards: new Set(),
         lastCurrentPlayer: '',
+        failedRetries: 0,
       });
 
       // Track room bots
@@ -235,6 +236,7 @@ export class BotManager {
         hasAnnounced: false,
         rejectedCards: new Set(),
         lastCurrentPlayer: '',
+        failedRetries: 0,
       });
     }
   }

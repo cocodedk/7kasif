@@ -91,6 +91,22 @@ export async function saveScores(
   }
 }
 
+export async function saveScoreSnapshots(
+  sessionId: number,
+  roundNumber: number,
+  players: { userId: number | null; netScore: number; plusClusters: number; minusClusters: number }[],
+): Promise<void> {
+  const pool = getPool();
+  for (const p of players) {
+    if (p.userId === null) continue;
+    await pool.query(
+      `INSERT INTO score_snapshots (user_id, session_id, round_number, net_score, plus_clusters, minus_clusters)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [p.userId, sessionId, roundNumber, p.netScore, p.plusClusters, p.minusClusters],
+    );
+  }
+}
+
 export async function endTournament(sessionId: number): Promise<void> {
   const pool = getPool();
   await pool.query(

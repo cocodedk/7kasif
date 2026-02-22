@@ -5,7 +5,7 @@ interface AdminScreenProps {
   onBack: () => void;
 }
 
-type Tab = 'logs' | 'players';
+type Tab = 'rooms' | 'logs' | 'players';
 
 interface LogFile {
   name: string;
@@ -271,10 +271,147 @@ function LogDetail({ token, logFile, playerNames, onBack }: { token: string; log
   );
 }
 
+// --- Active Rooms ---
+
+interface AdminRoom {
+  code: string;
+  players: { id: string; name: string; connected: boolean }[];
+  hostId: string;
+  mode: string;
+  phase: string;
+  createdAt: number;
+  lastActivityAt: number;
+}
+
+function formatAge(ms: number): string {
+  const diff = Date.now() - ms;
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ${mins % 60}m ago`;
+  return `${Math.floor(hrs / 24)}d ago`;
+}
+
+function ActiveRooms({ token }: { token: string }) {
+  const [rooms, setRooms] = useState<AdminRoom[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [stopping, setStopping] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<{ type: 'ok' | 'err'; msg: string } | null>(null);
+
+  const fetchRooms = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const res = await fetch(`${window.location.origin}/api/admin/rooms`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error(`Failed (${res.status})`);
+      setRooms(await res.json());
+    } catch (err: any) {
+      setError(err.message || 'Failed to load rooms');
+    } finally {
+      setLoading(false);
+    }
+  }, [token]);
+
+  useEffect(() => { fetchRooms(); }, [fetchRooms]);
+
+  const stopRoom = async (code: string) => {
+    if (!confirm(`Force-stop room ${code}? All players will be disconnected.`)) return;
+    setStopping(code);
+    setFeedback(null);
+    try {
+      const res = await fetch(`${window.location.origin}/api/admin/rooms/${code}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error(`Failed (${res.status})`);
+      setFeedback({ type: 'ok', msg: `Room ${code} stopped` });
+      setRooms(prev => prev.filter(r => r.code !== code));
+    } catch (err: any) {
+      setFeedback({ type: 'err', msg: err.message || 'Failed to stop room' });
+    } finally {
+      setStopping(null);
+    }
+  };
+
+  return (
+    <div className="w-full max-w-lg">
+      <div className="flex items-center gap-3 mb-4">
+        <span className="text-gray-400 text-sm">{rooms.length} active room{rooms.length !== 1 ? 's' : ''}</span>
+        <button
+          onClick={fetchRooms}
+          disabled={loading}
+          className="text-gray-400 hover:text-white text-sm underline"
+        >
+          {loading ? '...' : 'Refresh'}
+        </button>
+      </div>
+
+      {error && (
+        <div className="bg-red-900/50 text-red-300 text-sm px-4 py-2 rounded-lg mb-3">{error}</div>
+      )}
+
+      {feedback && (
+        <div className={`text-sm px-4 py-2 rounded-lg mb-3 ${feedback.type === 'ok' ? 'bg-green-900/50 text-green-300' : 'bg-red-900/50 text-red-300'}`}>
+          {feedback.msg}
+        </div>
+      )}
+
+      {!loading && rooms.length === 0 && !error && (
+        <div className="text-gray-500 text-sm">No active rooms.</div>
+      )}
+
+      <div className="space-y-2">
+        {rooms.map(room => (
+          <div
+            key={room.code}
+            className="bg-white/5 border border-white/10 rounded-lg px-4 py-3"
+          >
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-white font-medium text-lg">{room.code}</span>
+                <span className={`text-xs px-2 py-0.5 rounded-full ${room.phase === 'playing' ? 'bg-green-900/50 text-green-300' : 'bg-gray-700 text-gray-300'}`}>
+                  {room.phase}
+                </span>
+                <span className="text-gray-500 text-xs">{room.mode}</span>
+              </div>
+              <button
+                onClick={() => stopRoom(room.code)}
+                disabled={stopping === room.code}
+                className="text-xs px-3 py-1 rounded bg-red-700 hover:bg-red-600 text-white font-medium disabled:opacity-50 transition-colors"
+              >
+                {stopping === room.code ? '...' : 'Stop'}
+              </button>
+            </div>
+
+            <div className="flex flex-wrap gap-2 mb-1.5">
+              {room.players.map(p => (
+                <span key={p.id} className="flex items-center gap-1 text-sm">
+                  <span className={`inline-block w-2 h-2 rounded-full ${p.connected ? 'bg-green-400' : 'bg-red-400'}`} />
+                  <span className={p.id === room.hostId ? 'text-white font-medium' : 'text-gray-300'}>
+                    {p.name}{p.id === room.hostId ? ' (host)' : ''}
+                  </span>
+                </span>
+              ))}
+            </div>
+
+            <div className="text-gray-600 text-xs">
+              Created {formatAge(room.createdAt)} · Last activity {formatAge(room.lastActivityAt)}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // --- Main AdminScreen ---
 
 export function AdminScreen({ token, onBack }: AdminScreenProps) {
-  const [tab, setTab] = useState<Tab>('logs');
+  const [tab, setTab] = useState<Tab>('rooms');
   const [logs, setLogs] = useState<LogFile[]>([]);
   const [logsLoading, setLogsLoading] = useState(true);
   const [logsError, setLogsError] = useState('');
@@ -339,9 +476,12 @@ export function AdminScreen({ token, onBack }: AdminScreenProps) {
       <h1 className="text-3xl font-bold mb-1">Admin</h1>
 
       <div className="flex gap-2 mb-6 mt-2">
+        {tabBtn('rooms', 'Active Rooms')}
         {tabBtn('logs', 'Game Logs')}
         {tabBtn('players', 'Create Player')}
       </div>
+
+      {tab === 'rooms' && <ActiveRooms token={token} />}
 
       {tab === 'players' && <CreatePlayerForm token={token} />}
 

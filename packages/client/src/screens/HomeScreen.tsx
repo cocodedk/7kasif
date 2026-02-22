@@ -1,8 +1,12 @@
 import { useState } from 'react';
 import type { ClientMessage, GameMode } from '@hafte-kasif/shared';
 
+type HomeMessage =
+  | Omit<Extract<ClientMessage, { type: 'CREATE_ROOM' }>, 'token'>
+  | Omit<Extract<ClientMessage, { type: 'JOIN_ROOM' }>, 'token'>;
+
 interface HomeScreenProps {
-  send: (msg: ClientMessage) => void;
+  send: (msg: HomeMessage) => void;
   connected: boolean;
 }
 

@@ -66,7 +66,7 @@ describe('Draw — limited to one per turn', () => {
       ],
       firstCard: c('3h'),
       currentPlayerIndex: 0,
-      pendingEffect: { type: 'seven-penalty', penalty: 2, drawn: 0 },
+      pendingEffect: { type: 'seven-penalty', penalty: 2, drawn: 0, suit: 'hearts' },
     });
 
     log('p1 draws first penalty card');
