@@ -11,6 +11,7 @@ import { SessionEndedScreen } from './screens/SessionEndedScreen.js';
 import { GameBoard } from './components/GameBoard.js';
 import { VictoryTransition } from './components/VictoryTransition.js';
 import { AdminScreen } from './screens/AdminScreen.js';
+import { StatsScreen } from './screens/StatsScreen.js';
 import { DevPreview } from './DevPreview.js';
 
 const DEV_PREVIEW = import.meta.env.VITE_DEV_PREVIEW === 'true';
@@ -88,6 +89,7 @@ function AuthenticatedGame({
   const { send: rawSend, connected, onMessage } = useWebSocket();
   const { state, dispatch } = useGameState(onMessage);
   const [showAdmin, setShowAdmin] = useState(false);
+  const [showStats, setShowStats] = useState(false);
   const [showTransition, setShowTransition] = useState(false);
   const handleTransitionComplete = useCallback(() => setShowTransition(false), []);
 
@@ -190,10 +192,21 @@ function AuthenticatedGame({
     return <AdminScreen token={token} onBack={() => setShowAdmin(false)} />;
   }
 
+  // Stats screen
+  if (showStats) {
+    return <StatsScreen onBack={() => setShowStats(false)} />;
+  }
+
   // Home
   return (
     <div className="relative h-full">
       <div className="absolute top-4 right-4 flex items-center gap-3">
+        <button
+          onClick={() => setShowStats(true)}
+          className="text-xs text-gray-500 hover:text-gray-300"
+        >
+          Stats
+        </button>
         {isAdmin && (
           <button
             onClick={() => setShowAdmin(true)}

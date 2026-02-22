@@ -2,7 +2,8 @@ import type { IncomingMessage, ServerResponse } from 'http';
 import { readdirSync, readFileSync, statSync } from 'fs';
 import { join } from 'path';
 import { createUser, sendMagicLink, verifyMagicToken, verifyToken } from '../auth/auth.js';
-import { getLeaderboard, getPlayerStats, getTournamentHistory } from '../db/leaderboard.js';
+import { getLeaderboard, getLeaderboardByYear, getPlayerStats, getTournamentHistory, getTournamentsByYear } from '../db/leaderboard.js';
+import { loadTournament } from '../db/tournaments.js';
 import type { RoomManager } from '../rooms/RoomManager.js';
 import type { ConnectionManager } from '../rooms/ConnectionManager.js';
 
@@ -120,7 +121,25 @@ export async function handleApiRoute(
     return true;
   }
 
-  if (url === '/api/leaderboard' && method === 'GET') {
+  const parsedUrl = new URL(url, 'http://localhost');
+
+  if (parsedUrl.pathname === '/api/leaderboard' && method === 'GET') {
+    const yearParam = parsedUrl.searchParams.get('year');
+    if (yearParam !== null) {
+      const year = parseInt(yearParam, 10);
+      if (isNaN(year) || year < 2000 || year > 2100) {
+        json(res, 400, { error: 'Invalid year parameter' });
+        return true;
+      }
+      try {
+        const leaderboard = await getLeaderboardByYear(year);
+        json(res, 200, leaderboard);
+      } catch (err: any) {
+        console.error('Leaderboard error:', err);
+        json(res, 500, { error: 'Failed to fetch leaderboard' });
+      }
+      return true;
+    }
     try {
       const leaderboard = await getLeaderboard();
       json(res, 200, leaderboard);
@@ -131,12 +150,44 @@ export async function handleApiRoute(
     return true;
   }
 
-  if (url === '/api/tournaments' && method === 'GET') {
+  if (parsedUrl.pathname === '/api/tournaments' && method === 'GET') {
+    const yearParam = parsedUrl.searchParams.get('year');
+    if (yearParam !== null) {
+      const year = parseInt(yearParam, 10);
+      if (isNaN(year) || year < 2000 || year > 2100) {
+        json(res, 400, { error: 'Invalid year parameter' });
+        return true;
+      }
+      try {
+        const tournaments = await getTournamentsByYear(year);
+        json(res, 200, tournaments);
+      } catch (err: any) {
+        json(res, 500, { error: 'Failed to fetch tournaments' });
+      }
+      return true;
+    }
     try {
       const tournaments = await getTournamentHistory();
       json(res, 200, tournaments);
     } catch (err: any) {
       json(res, 500, { error: 'Failed to fetch tournaments' });
+    }
+    return true;
+  }
+
+  // GET /api/tournaments/:id — tournament detail
+  const tournamentDetailMatch = parsedUrl.pathname.match(/^\/api\/tournaments\/(\d+)$/);
+  if (tournamentDetailMatch && method === 'GET') {
+    try {
+      const id = parseInt(tournamentDetailMatch[1], 10);
+      const tournament = await loadTournament(id);
+      if (!tournament) {
+        json(res, 404, { error: 'Tournament not found' });
+      } else {
+        json(res, 200, tournament);
+      }
+    } catch (err: any) {
+      json(res, 500, { error: 'Failed to fetch tournament' });
     }
     return true;
   }
