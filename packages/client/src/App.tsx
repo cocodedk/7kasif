@@ -144,7 +144,7 @@ function AuthenticatedGame({
           loserName={state.gameOver.reversed ? finisherName : nameOf(state.gameOver.loserId)}
           points={state.gameOver.points}
           reversed={state.gameOver.reversed}
-          lastCard={state.game?.topDiscard ?? null}
+          lastCard={state.gameOver.finishingCard ?? null}
           finishedByName={finisherName}
           onComplete={handleTransitionComplete}
         />

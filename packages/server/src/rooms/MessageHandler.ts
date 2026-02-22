@@ -142,6 +142,7 @@ export class MessageHandler {
         points: gameOverEvent.points,
         reversed: gameOverEvent.reversed,
         hands: gameOverEvent.hands,
+        finishingCard: finishingCard ?? null,
       } satisfies ServerMessage);
     }
 

@@ -88,6 +88,7 @@ export interface GameOverMessage {
   points: number;
   reversed: boolean;
   hands: PlayerHandSummary[];
+  finishingCard: Card | null;
 }
 
 export interface TournamentUpdateMessage {
