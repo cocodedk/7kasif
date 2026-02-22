@@ -116,6 +116,7 @@ export function DevPreview() {
       }
       setHasDrawn(false);
       setError(null);
+      setGame(prev => ({ ...prev, hasDrawnThisTurn: false }));
       passTurnBriefly(setGame);
     }
   }, [hasDrawn]);

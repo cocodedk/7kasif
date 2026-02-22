@@ -263,20 +263,25 @@ export async function handleApiRoute(
       json(res, 500, { error: 'Room management unavailable' });
       return true;
     }
-    const data = rooms.getAllRooms().map(room => ({
-      code: room.code,
-      players: room.players.map(p => ({
-        id: p.id,
-        name: p.name,
-        connected: connections.isConnected(p.id),
-      })),
-      hostId: room.hostId,
-      mode: room.mode,
-      phase: room.gameState ? room.gameState.phase : 'lobby',
-      createdAt: room.createdAt,
-      lastActivityAt: room.lastActivityAt,
-    }));
-    json(res, 200, data);
+    try {
+      const data = rooms.getAllRooms().map(room => ({
+        code: room.code,
+        players: room.players.map(p => ({
+          id: p.id,
+          name: p.name,
+          connected: connections.isConnected(p.id),
+        })),
+        hostId: room.hostId,
+        mode: room.mode,
+        phase: room.gameState ? room.gameState.phase : 'lobby',
+        createdAt: room.createdAt,
+        lastActivityAt: room.lastActivityAt,
+      }));
+      json(res, 200, data);
+    } catch (err: any) {
+      console.error('Admin rooms error:', err);
+      json(res, 500, { error: 'Failed to fetch rooms' });
+    }
     return true;
   }
 
@@ -298,15 +303,20 @@ export async function handleApiRoute(
       json(res, 404, { error: 'Room not found' });
       return true;
     }
-    const playerIds = room.players.map(p => p.id);
-    rooms.removeRoom(code);
-    for (const playerId of playerIds) {
-      connections.send(playerId, {
-        type: 'ROOM_CLOSED',
-        reason: 'Room closed by admin',
-      });
+    try {
+      const playerIds = room.players.map(p => p.id);
+      rooms.removeRoom(code);
+      for (const playerId of playerIds) {
+        connections.send(playerId, {
+          type: 'ROOM_CLOSED',
+          reason: 'Room closed by admin',
+        });
+      }
+      json(res, 200, { ok: true });
+    } catch (err: any) {
+      console.error('Admin room delete error:', err);
+      json(res, 500, { error: 'Failed to stop room' });
     }
-    json(res, 200, { ok: true });
     return true;
   }
 

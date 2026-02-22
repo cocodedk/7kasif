@@ -206,6 +206,10 @@ describe('DELETE /api/admin/rooms/:code', () => {
     const msg1 = JSON.parse(ws1.send.mock.calls[0][0]);
     expect(msg1.type).toBe('ROOM_CLOSED');
     expect(msg1.reason).toContain('admin');
+
+    const msg2 = JSON.parse(ws2.send.mock.calls[0][0]);
+    expect(msg2.type).toBe('ROOM_CLOSED');
+    expect(msg2.reason).toContain('admin');
   });
 
   it('removes the room even when no players are connected', async () => {
