@@ -190,6 +190,7 @@ export function StatsScreen({ onBack }: StatsScreenProps) {
   const [tournaments, setTournaments] = useState<TournamentSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     setLoading(true);
@@ -210,7 +211,7 @@ export function StatsScreen({ onBack }: StatsScreenProps) {
       })
       .catch((err) => setError(err.message || 'Failed to load data'))
       .finally(() => setLoading(false));
-  }, [tab, year]);
+  }, [tab, year, refreshKey]);
 
   const tabBtn = (t: Tab, label: string) => (
     <button
@@ -241,9 +242,19 @@ export function StatsScreen({ onBack }: StatsScreenProps) {
         ))}
       </div>
 
-      <div className="flex gap-2 mb-6">
+      <div className="flex gap-2 mb-6 items-center">
         {tabBtn('rankings', 'Rankings')}
         {tabBtn('tournaments', 'Tournaments')}
+        <button
+          onClick={() => setRefreshKey(k => k + 1)}
+          disabled={loading}
+          className="ml-2 text-gray-500 hover:text-gray-200 transition-colors disabled:opacity-30"
+          title="Refresh"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={loading ? 'animate-spin' : ''}>
+            <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+          </svg>
+        </button>
       </div>
 
       {error && (

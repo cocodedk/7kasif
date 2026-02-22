@@ -145,8 +145,8 @@ export class MessageHandler {
       isAceChainFull,
     );
 
-    // Persist round to DB (after in-memory update so rounds.length is correct)
-    this.persistRound(
+    // Persist round and updated scores to DB (after in-memory update so rounds.length is correct)
+    this.persistRoundAndScores(
       room,
       gameOverEvent.winnerId,
       gameOverEvent.loserId,
@@ -428,7 +428,7 @@ export class MessageHandler {
     }
   }
 
-  private async persistRound(room: Room, winnerId: string, loserId: string, points: number, reversed: boolean, finishingCard: string): Promise<void> {
+  private async persistRoundAndScores(room: Room, winnerId: string, loserId: string, points: number, reversed: boolean, finishingCard: string): Promise<void> {
     if (room.dbSessionId === null) return;
     try {
       const winnerPlayer = room.players.find(p => p.id === winnerId);
@@ -444,6 +444,12 @@ export class MessageHandler {
         reversed,
         finishingCard,
       );
+      // Also persist current scores so leaderboard updates even if session is never ended
+      const userIdMap = new Map<string, number | null>();
+      for (const p of room.players) {
+        userIdMap.set(p.id, extractUserId(p.id));
+      }
+      await saveScores(room.dbSessionId, room.tournament.playerScores, userIdMap);
     } catch (err) {
       console.error('[DB] Failed to persist round:', err);
     }
