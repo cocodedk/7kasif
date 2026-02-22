@@ -25,6 +25,8 @@ export interface Room {
   tournament: TournamentSession;
   createdAt: number;
   lastActivityAt: number;
+  dbSessionId: number | null;
+  cardsPerPlayer: number;
 }
 
 const ROOM_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
@@ -54,6 +56,8 @@ export class RoomManager {
       },
       createdAt: Date.now(),
       lastActivityAt: Date.now(),
+      dbSessionId: null,
+      cardsPerPlayer: 0,
     };
     this.rooms.set(code, room);
     return room;
@@ -125,6 +129,7 @@ export class RoomManager {
     );
 
     room.gameState = state;
+    room.cardsPerPlayer = cardsPerPlayer;
     room.lastActivityAt = Date.now();
     return { state, deck: initialDeck };
   }
