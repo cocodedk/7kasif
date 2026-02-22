@@ -35,8 +35,56 @@ export interface PlayerStats {
   recentSessions: TournamentSummary[];
 }
 
-export async function getLeaderboard(): Promise<LeaderboardEntry[]> {
+export async function getLeaderboard(year?: number): Promise<LeaderboardEntry[]> {
   const pool = getPool();
+
+  if (year !== undefined) {
+    const yearStart = new Date(year, 0, 1);
+    const yearEnd = new Date(year + 1, 0, 1);
+    const result = await pool.query(`
+      SELECT
+        sp.user_id,
+        sp.player_name,
+        u.display_name,
+        COUNT(DISTINCT sp.session_id) AS total_sessions,
+        COALESCE(SUM(sp.final_plus_clusters), 0) AS total_plus_clusters,
+        COALESCE(SUM(sp.final_minus_clusters), 0) AS total_minus_clusters,
+        COALESCE(SUM(sp.final_net_score), 0) AS net_score,
+        COALESCE((
+          SELECT COUNT(*) FROM rounds r
+          JOIN session_players sp2 ON sp2.session_id = r.session_id AND sp2.player_name = r.winner_name
+          JOIN sessions s2 ON s2.id = sp2.session_id
+          WHERE sp2.user_id = sp.user_id AND sp2.player_name = sp.player_name AND NOT r.reversed
+            AND s2.started_at >= $1 AND s2.started_at < $2
+        ), 0) AS total_rounds_won,
+        COALESCE((
+          SELECT COUNT(*) FROM rounds r
+          JOIN session_players sp2 ON sp2.session_id = r.session_id AND sp2.player_name = r.loser_name
+          JOIN sessions s2 ON s2.id = sp2.session_id
+          WHERE sp2.user_id = sp.user_id AND sp2.player_name = sp.player_name AND NOT r.reversed
+            AND s2.started_at >= $1 AND s2.started_at < $2
+        ), 0) AS total_rounds_lost
+      FROM session_players sp
+      JOIN sessions s ON s.id = sp.session_id
+      LEFT JOIN users u ON u.id = sp.user_id
+      WHERE s.started_at >= $1 AND s.started_at < $2
+      GROUP BY sp.user_id, sp.player_name, u.display_name
+      ORDER BY net_score DESC, total_plus_clusters DESC
+    `, [yearStart, yearEnd]);
+
+    return result.rows.map((row) => ({
+      userId: row.user_id,
+      playerName: row.player_name,
+      displayName: row.display_name,
+      totalSessions: parseInt(row.total_sessions, 10),
+      totalRoundsWon: parseInt(row.total_rounds_won, 10),
+      totalRoundsLost: parseInt(row.total_rounds_lost, 10),
+      totalPlusClusters: parseInt(row.total_plus_clusters, 10),
+      totalMinusClusters: parseInt(row.total_minus_clusters, 10),
+      netScore: parseInt(row.net_score, 10),
+    }));
+  }
+
   const result = await pool.query(`
     SELECT
       sp.user_id,
@@ -61,52 +109,6 @@ export async function getLeaderboard(): Promise<LeaderboardEntry[]> {
     GROUP BY sp.user_id, sp.player_name, u.display_name
     ORDER BY net_score DESC, total_plus_clusters DESC
   `);
-
-  return result.rows.map((row) => ({
-    userId: row.user_id,
-    playerName: row.player_name,
-    displayName: row.display_name,
-    totalSessions: parseInt(row.total_sessions, 10),
-    totalRoundsWon: parseInt(row.total_rounds_won, 10),
-    totalRoundsLost: parseInt(row.total_rounds_lost, 10),
-    totalPlusClusters: parseInt(row.total_plus_clusters, 10),
-    totalMinusClusters: parseInt(row.total_minus_clusters, 10),
-    netScore: parseInt(row.net_score, 10),
-  }));
-}
-
-export async function getLeaderboardByYear(year: number): Promise<LeaderboardEntry[]> {
-  const pool = getPool();
-  const result = await pool.query(`
-    SELECT
-      sp.user_id,
-      sp.player_name,
-      u.display_name,
-      COUNT(DISTINCT sp.session_id) AS total_sessions,
-      COALESCE(SUM(sp.final_plus_clusters), 0) AS total_plus_clusters,
-      COALESCE(SUM(sp.final_minus_clusters), 0) AS total_minus_clusters,
-      COALESCE(SUM(sp.final_net_score), 0) AS net_score,
-      COALESCE((
-        SELECT COUNT(*) FROM rounds r
-        JOIN session_players sp2 ON sp2.session_id = r.session_id AND sp2.player_name = r.winner_name
-        JOIN sessions s2 ON s2.id = sp2.session_id
-        WHERE sp2.user_id = sp.user_id AND sp2.player_name = sp.player_name AND NOT r.reversed
-          AND EXTRACT(YEAR FROM s2.started_at) = $1
-      ), 0) AS total_rounds_won,
-      COALESCE((
-        SELECT COUNT(*) FROM rounds r
-        JOIN session_players sp2 ON sp2.session_id = r.session_id AND sp2.player_name = r.loser_name
-        JOIN sessions s2 ON s2.id = sp2.session_id
-        WHERE sp2.user_id = sp.user_id AND sp2.player_name = sp.player_name AND NOT r.reversed
-          AND EXTRACT(YEAR FROM s2.started_at) = $1
-      ), 0) AS total_rounds_lost
-    FROM session_players sp
-    JOIN sessions s ON s.id = sp.session_id
-    LEFT JOIN users u ON u.id = sp.user_id
-    WHERE EXTRACT(YEAR FROM s.started_at) = $1
-    GROUP BY sp.user_id, sp.player_name, u.display_name
-    ORDER BY net_score DESC, total_plus_clusters DESC
-  `, [year]);
 
   return result.rows.map((row) => ({
     userId: row.user_id,
@@ -153,6 +155,8 @@ export async function getTournamentHistory(): Promise<TournamentSummary[]> {
 
 export async function getTournamentsByYear(year: number): Promise<TournamentSummary[]> {
   const pool = getPool();
+  const yearStart = new Date(year, 0, 1);
+  const yearEnd = new Date(year + 1, 0, 1);
   const result = await pool.query(`
     SELECT
       s.id,
@@ -165,9 +169,10 @@ export async function getTournamentsByYear(year: number): Promise<TournamentSumm
       (SELECT COUNT(*) FROM rounds r WHERE r.session_id = s.id) AS round_count
     FROM sessions s
     WHERE s.ended_at IS NOT NULL
-      AND EXTRACT(YEAR FROM s.started_at) = $1
+      AND s.started_at >= $1 AND s.started_at < $2
     ORDER BY s.ended_at DESC
-  `, [year]);
+    LIMIT 50
+  `, [yearStart, yearEnd]);
 
   return result.rows.map((row) => ({
     id: row.id,

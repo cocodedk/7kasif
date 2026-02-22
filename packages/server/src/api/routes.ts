@@ -2,7 +2,7 @@ import type { IncomingMessage, ServerResponse } from 'http';
 import { readdirSync, readFileSync, statSync } from 'fs';
 import { join } from 'path';
 import { createUser, sendMagicLink, verifyMagicToken, verifyToken } from '../auth/auth.js';
-import { getLeaderboard, getLeaderboardByYear, getPlayerStats, getTournamentHistory, getTournamentsByYear } from '../db/leaderboard.js';
+import { getLeaderboard, getPlayerStats, getTournamentHistory, getTournamentsByYear } from '../db/leaderboard.js';
 import { loadTournament } from '../db/tournaments.js';
 import type { RoomManager } from '../rooms/RoomManager.js';
 import type { ConnectionManager } from '../rooms/ConnectionManager.js';
@@ -132,7 +132,7 @@ export async function handleApiRoute(
         return true;
       }
       try {
-        const leaderboard = await getLeaderboardByYear(year);
+        const leaderboard = await getLeaderboard(year);
         json(res, 200, leaderboard);
       } catch (err: any) {
         console.error('Leaderboard error:', err);
@@ -193,7 +193,7 @@ export async function handleApiRoute(
   }
 
   // /api/players/:id/stats
-  const playerStatsMatch = url.match(/^\/api\/players\/(\d+)\/stats$/);
+  const playerStatsMatch = parsedUrl.pathname.match(/^\/api\/players\/(\d+)\/stats$/);
   if (playerStatsMatch && method === 'GET') {
     try {
       const userId = parseInt(playerStatsMatch[1], 10);

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import type { TournamentView } from '@hafte-kasif/shared';
 
 interface StatsScreenProps {
@@ -31,7 +31,7 @@ interface TournamentSummary {
 }
 
 const CURRENT_YEAR = new Date().getFullYear();
-const YEARS = Array.from({ length: CURRENT_YEAR - 2024 }, (_, i) => CURRENT_YEAR - i);
+const YEARS = Array.from({ length: CURRENT_YEAR - 2024 + 1 }, (_, i) => CURRENT_YEAR - i);
 
 function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString(undefined, {
@@ -89,6 +89,10 @@ function RankingsTable({ entries }: { entries: LeaderboardEntry[] }) {
 }
 
 function TournamentDetail({ tournament }: { tournament: TournamentView }) {
+  const playerNames = new Map<string, string>(
+    tournament.playerScores.map((s) => [s.playerId, s.playerName])
+  );
+
   return (
     <div className="space-y-2 mt-2 pl-4 border-l-2 border-white/10">
       {tournament.rounds.length > 0 && (
@@ -96,9 +100,9 @@ function TournamentDetail({ tournament }: { tournament: TournamentView }) {
           {tournament.rounds.map((round) => (
             <div key={round.roundNumber} className="text-xs text-gray-400 flex gap-2">
               <span className="text-gray-500">R{round.roundNumber}</span>
-              <span className="text-green-400">{round.winnerId}</span>
+              <span className="text-green-400">{playerNames.get(round.winnerId) ?? round.winnerId}</span>
               <span className="text-gray-600">beat</span>
-              <span className="text-red-400">{round.loserId}</span>
+              <span className="text-red-400">{playerNames.get(round.loserId) ?? round.loserId}</span>
               <span className="text-gray-500">({round.points}pts{round.reversed ? ', reversed' : ''})</span>
             </div>
           ))}
@@ -127,6 +131,7 @@ function TournamentsList({ tournaments }: { tournaments: TournamentSummary[] }) 
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [detail, setDetail] = useState<TournamentView | null>(null);
   const [loading, setLoading] = useState(false);
+  const abortRef = useRef<AbortController | null>(null);
 
   const toggleExpand = useCallback(async (id: number) => {
     if (expandedId === id) {
@@ -134,17 +139,26 @@ function TournamentsList({ tournaments }: { tournaments: TournamentSummary[] }) 
       setDetail(null);
       return;
     }
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
     setExpandedId(id);
     setDetail(null);
     setLoading(true);
     try {
-      const res = await fetch(`${window.location.origin}/api/tournaments/${id}`);
+      const res = await fetch(`${window.location.origin}/api/tournaments/${id}`, { signal: controller.signal });
       if (!res.ok) throw new Error(`Failed (${res.status})`);
-      setDetail(await res.json());
-    } catch {
+      const data = await res.json();
+      if (!controller.signal.aborted) {
+        setDetail(data);
+      }
+    } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') return;
       // silently fail
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) {
+        setLoading(false);
+      }
     }
   }, [expandedId]);
 
@@ -193,13 +207,14 @@ export function StatsScreen({ onBack }: StatsScreenProps) {
   const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
+    const controller = new AbortController();
     setLoading(true);
     setError('');
     const endpoint = tab === 'rankings'
       ? `/api/leaderboard?year=${year}`
       : `/api/tournaments?year=${year}`;
 
-    fetch(`${window.location.origin}${endpoint}`)
+    fetch(`${window.location.origin}${endpoint}`, { signal: controller.signal })
       .then(async (res) => {
         if (!res.ok) throw new Error(`Failed (${res.status})`);
         const data = await res.json();
@@ -209,8 +224,17 @@ export function StatsScreen({ onBack }: StatsScreenProps) {
           setTournaments(data);
         }
       })
-      .catch((err) => setError(err.message || 'Failed to load data'))
-      .finally(() => setLoading(false));
+      .catch((err) => {
+        if (err instanceof Error && err.name === 'AbortError') return;
+        setError(err.message || 'Failed to load data');
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
+      });
+
+    return () => controller.abort();
   }, [tab, year, refreshKey]);
 
   const tabBtn = (t: Tab, label: string) => (
@@ -269,7 +293,7 @@ export function StatsScreen({ onBack }: StatsScreenProps) {
         ) : tab === 'rankings' ? (
           <RankingsTable entries={leaderboard} />
         ) : (
-          <TournamentsList tournaments={tournaments} />
+          <TournamentsList key={year} tournaments={tournaments} />
         )}
       </div>
 

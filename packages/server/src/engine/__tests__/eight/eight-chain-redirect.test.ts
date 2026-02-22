@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { applyAction } from '../../game.js';
 import { createTestState, c, log } from '../helpers.js';
+import type { PendingPenalty } from '@hafte-kasif/shared';
 
 describe('Eight — chain redirect', () => {
   it('should redirect penalty to player 2 positions ahead', () => {
@@ -39,9 +40,9 @@ describe('Eight — chain redirect', () => {
     expect(p2AfterRedirect.hand.length).toBe(2); // had 1 (9c) + 1 drawn
     const effect2 = r2.newState.pendingEffect;
     expect(effect2?.type).toBe('seven-penalty');
-    expect(effect2?.type === 'seven-penalty' && effect2.penalty).toBe(2);
-    expect(effect2?.type === 'seven-penalty' && effect2.drawn).toBe(1);
-    expect(effect2?.type === 'seven-penalty' && effect2.suit).toBe('hearts');
+    expect((effect2 as PendingPenalty).penalty).toBe(2);
+    expect((effect2 as PendingPenalty).drawn).toBe(1);
+    expect((effect2 as PendingPenalty).suit).toBe('hearts');
     expect(r2.newState.players[r2.newState.currentPlayerIndex].id).toBe('p2');
 
     log('p2 draws second card');
@@ -52,7 +53,8 @@ describe('Eight — chain redirect', () => {
     const p2AfterDraw = r3.newState.players.find(p => p.id === 'p2')!;
     expect(p2AfterDraw.hand.length).toBe(3);
     const effect3 = r3.newState.pendingEffect;
-    expect(effect3?.type === 'seven-penalty' && effect3.drawn).toBe(2);
+    expect(effect3?.type).toBe('seven-penalty');
+    expect((effect3 as PendingPenalty).drawn).toBe(2);
 
     log('p2 passes after drawing all penalty cards');
     const r4 = applyAction(r3.newState, 'p2', { type: 'PASS_TURN' });
