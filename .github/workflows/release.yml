@@ -17,11 +17,13 @@ permissions:
 
 jobs:
   release:
+    if: "!startsWith(github.event.head_commit.message, 'chore: bump version')"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           fetch-depth: 0
+          token: ${{ secrets.ADMIN_TOKEN }}
 
       - name: Read and bump version
         id: version
