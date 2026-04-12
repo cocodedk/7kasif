@@ -273,6 +273,48 @@ describe('Server Integration', () => {
     host.ws.close();
     p2.ws.close();
   });
+
+  it('should send GAME_STATE to a player who reconnects mid-game', async () => {
+    const hostToken = nextToken();
+    const p2Token = nextToken();
+    const p3Token = nextToken();
+
+    const host = await createClient(port);
+    sendMsg(host.ws, { type: 'CREATE_ROOM', playerName: 'Alice', mode: 'standard', token: hostToken });
+    const created = await waitForMessage(host.messages, 'ROOM_CREATED') as any;
+    const roomCode = created.roomCode;
+
+    const p2 = await createClient(port);
+    sendMsg(p2.ws, { type: 'JOIN_ROOM', roomCode, playerName: 'Bob', token: p2Token });
+    await waitForMessage(p2.messages, 'ROOM_JOINED');
+
+    const p3 = await createClient(port);
+    sendMsg(p3.ws, { type: 'JOIN_ROOM', roomCode, playerName: 'Charlie', token: p3Token });
+    await waitForMessage(p3.messages, 'ROOM_JOINED');
+
+    // Start the game
+    sendMsg(host.ws, { type: 'START_GAME', cardsPerPlayer: 2 });
+    await waitForMessage(host.messages, 'GAME_STATE');
+    await waitForMessage(p2.messages, 'GAME_STATE');
+    await waitForMessage(p3.messages, 'GAME_STATE');
+
+    // p2 disconnects
+    p2.ws.close();
+    await new Promise(resolve => setTimeout(resolve, 50));
+
+    // p2 reconnects with the same token (same player ID) — should receive GAME_STATE
+    const p2Reconnect = await createClient(port);
+    const msgCountBefore = p2Reconnect.messages.length;
+    sendMsg(p2Reconnect.ws, { type: 'JOIN_ROOM', roomCode, playerName: 'Bob', token: p2Token });
+
+    await waitForMessage(p2Reconnect.messages, 'ROOM_JOINED', msgCountBefore);
+    const gameState = await waitForMessage(p2Reconnect.messages, 'GAME_STATE', msgCountBefore);
+    expect(gameState.type).toBe('GAME_STATE');
+
+    host.ws.close();
+    p3.ws.close();
+    p2Reconnect.ws.close();
+  });
 });
 
 describe('Add Bots', () => {
