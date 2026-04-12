@@ -17,7 +17,7 @@ export function useFeed(
 ): { feed: FeedEntry[]; playedCard: { card: Card; playerName: string } | null } {
   const [feed, setFeed] = useState<FeedEntry[]>([]);
   const [playedCard, setPlayedCard] = useState<{ card: Card; playerName: string } | null>(null);
-  const playedTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const playedTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const feedIdCounter = useRef(0);
   const feedSeqCounter = useRef(0);
 
