@@ -1,0 +1,25 @@
+# 7kasif (Hafte Kasif)
+
+> 7kasif is a web application built with a TypeScript monorepo architecture. Packages include a shared library, a Node.js server, and a React client.
+
+## Stack
+
+- TypeScript monorepo (npm workspaces)
+- Node.js server, React client
+- PostgreSQL database
+- Docker for local development
+
+## Author
+
+- **Name**: Babak Bandpey
+- **Website**: https://cocode.dk
+- **LinkedIn**: https://linkedin.com/in/babakbandpey
+- **GitHub**: https://github.com/cocodedk
+
+## Repository
+
+- **GitHub**: https://github.com/cocodedk/7kasif
+
+## License
+
+Apache-2.0 | © 2026 [Cocode](https://cocode.dk)
