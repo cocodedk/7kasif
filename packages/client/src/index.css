@@ -1,6 +1,9 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@theme {
+  --color-felt: #1b5e3b;
+  --color-felt-light: #1e6e45;
+}
 
 html, body, #root {
   height: 100dvh;
