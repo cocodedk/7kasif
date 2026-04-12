@@ -235,6 +235,16 @@ export class MessageHandler {
         } satisfies ServerMessage);
       }
     }
+
+    // Reconnection mid-game: restore game state for the rejoining player
+    if (room.gameState && room.gameState.phase === 'playing') {
+      const view = this.rooms.getPlayerView(room.gameState, playerId);
+      this.connections.send(playerId, {
+        type: 'GAME_STATE',
+        state: view,
+        events: [],
+      } satisfies ServerMessage);
+    }
   }
 
   private handleStartGame(playerId: string, cardsPerPlayer: number): void {

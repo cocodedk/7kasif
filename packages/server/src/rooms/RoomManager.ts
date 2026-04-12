@@ -66,9 +66,11 @@ export class RoomManager {
   joinRoom(code: string, playerId: string, playerName: string): Room | null {
     const room = this.rooms.get(code);
     if (!room) return null;
+    // Reconnection: player already in room — allow regardless of game state
+    if (room.players.some(p => p.id === playerId)) return room;
+    // New player: block if game in progress or room full
     if (room.gameState) return null;
     if (room.players.length >= 4) return null;
-    if (room.players.some(p => p.id === playerId)) return room;
 
     // Remove player from any other rooms before joining
     this.removePlayerFromAllRooms(playerId);
