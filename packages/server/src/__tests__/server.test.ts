@@ -194,8 +194,8 @@ describe('Server Integration', () => {
     if (currentClient) {
       const pending = currentClient.state.pendingEffect;
 
-      // If the initial flipped card created a pending effect, resolve it first
       if (pending?.type === 'jack-declare') {
+        // DECLARE_SUIT advances the turn — do not attempt DRAW_CARD afterwards
         const msgCountBefore = currentClient.messages.length;
         sendMsg(currentClient.ws, {
           type: 'PLAYER_ACTION',
@@ -203,26 +203,28 @@ describe('Server Integration', () => {
         });
         const afterDeclare = await waitForMessage(currentClient.messages, 'GAME_STATE', msgCountBefore);
         expect(afterDeclare.type).toBe('GAME_STATE');
-      } else if (pending?.type === 'queen-reveal') {
+      } else {
+        // Resolve queen-reveal if present (turn stays with current player)
+        if (pending?.type === 'queen-reveal') {
+          const msgCountBefore = currentClient.messages.length;
+          sendMsg(currentClient.ws, {
+            type: 'PLAYER_ACTION',
+            action: { type: 'REVEAL_CARD', card: currentClient.state.myHand[0] },
+          });
+          const afterReveal = await waitForMessage(currentClient.messages, 'GAME_STATE', msgCountBefore);
+          expect(afterReveal.type).toBe('GAME_STATE');
+        }
+
+        // Draw a card — valid for: no pending, queen-reveal (resolved above),
+        // seven-chain, ace-chain, seven-penalty
         const msgCountBefore = currentClient.messages.length;
         sendMsg(currentClient.ws, {
           type: 'PLAYER_ACTION',
-          action: { type: 'REVEAL_CARD', card: currentClient.state.myHand[0] },
+          action: { type: 'DRAW_CARD' },
         });
-        const afterReveal = await waitForMessage(currentClient.messages, 'GAME_STATE', msgCountBefore);
-        expect(afterReveal.type).toBe('GAME_STATE');
+        const updated = await waitForMessage(currentClient.messages, 'GAME_STATE', msgCountBefore);
+        expect(updated.type).toBe('GAME_STATE');
       }
-
-      // Now draw a card (valid for normal, ace-chain, and seven-chain states)
-      const msgCountBefore = currentClient.messages.length;
-      sendMsg(currentClient.ws, {
-        type: 'PLAYER_ACTION',
-        action: { type: 'DRAW_CARD' },
-      });
-
-      // Should receive updated game state
-      const updated = await waitForMessage(currentClient.messages, 'GAME_STATE', msgCountBefore);
-      expect(updated.type).toBe('GAME_STATE');
     }
 
     host.ws.close();
