@@ -1,4 +1,4 @@
-FROM node:22-slim AS builder
+FROM node:26-slim AS builder
 
 WORKDIR /app
 COPY package*.json ./
@@ -18,7 +18,7 @@ WORKDIR /app/packages/client
 RUN npx vite build
 
 # Production image
-FROM node:22-slim
+FROM node:26-slim
 
 WORKDIR /app
 COPY --from=builder /app/package*.json ./
