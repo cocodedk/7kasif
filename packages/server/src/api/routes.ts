@@ -9,7 +9,7 @@ import type { ConnectionManager } from '../rooms/ConnectionManager.js';
 
 const GAME_LOGS_DIR = join(process.cwd(), 'data', 'game-logs');
 
-const CORS_ORIGIN = process.env.CORS_ORIGIN || 'https://cocodedk.github.io';
+const CORS_ORIGIN = process.env.CORS_ORIGIN || 'https://7kasif.cocode.dk';
 
 export function setCorsHeaders(res: ServerResponse): void {
   res.setHeader('Access-Control-Allow-Origin', CORS_ORIGIN);

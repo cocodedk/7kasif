@@ -35,7 +35,7 @@ See `deploy/setup-server.sh` for VPS provisioning. Pushes to `main` auto-deploy 
 
 ## Score Tracking
 
-Use [D7](https://cocodedk.github.io/D7/) to track game scores.
+Use [D7](https://d7.cocode.dk/) to track game scores.
 
 ## Game Creators
 

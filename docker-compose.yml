@@ -10,7 +10,7 @@ services:
       - DB_PASSWORD_FILE=/run/secrets/db_password
       - DATABASE_URL=postgresql://hk@postgres:5432/hafte_kasif
       - JWT_SECRET=${JWT_SECRET}
-      - CORS_ORIGIN=https://cocodedk.github.io
+      - CORS_ORIGIN=https://7kasif.cocode.dk
       - DEBUG_GAME_LOG=${DEBUG_GAME_LOG:-0}
       - SMTP_HOST=${SMTP_HOST}
       - SMTP_PORT=${SMTP_PORT}
