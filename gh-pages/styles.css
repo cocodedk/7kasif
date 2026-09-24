@@ -41,6 +41,16 @@ body {
   padding: 0 2rem;
 }
 
+/* The cocode.dk frame lines up with the .container column above; keep the gutters in step.
+   Its own bar is transparent by design, so give the host elements the felt-green background
+   of the sections they sit against (hero above, footer below) — otherwise "dark" text would
+   land on the page's light cream body colour instead. */
+cocode-head, cocode-foot {
+  --cocode-max: 1200px;
+  --cocode-gutter: 32px;
+  background: var(--felt-green-dark);
+}
+
 /* Hero Section */
 .hero {
   position: relative;
@@ -433,22 +443,6 @@ tbody tr:hover {
   to { transform: rotate(360deg); }
 }
 
-.footer-author {
-  margin-bottom: 1rem;
-  font-size: 1rem;
-}
-
-.footer-author a {
-  color: var(--gold);
-  text-decoration: none;
-  transition: color 0.3s ease;
-}
-
-.footer-author a:hover {
-  color: var(--gold-dark);
-  text-decoration: underline;
-}
-
 .footer-links {
   margin-top: 1.5rem;
 }
@@ -469,6 +463,10 @@ tbody tr:hover {
 @media (max-width: 768px) {
   .container {
     padding: 0 1.5rem;
+  }
+
+  cocode-head, cocode-foot {
+    --cocode-gutter: 24px;
   }
 
   section {
