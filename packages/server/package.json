@@ -13,7 +13,7 @@
     "@hafte-kasif/shared": "*",
     "jsonwebtoken": "^9.0.3",
     "nodemailer": "^8.0.10",
-    "pg": "^8.20.0",
+    "pg": "^8.22.0",
     "ws": "^8.21.0"
   },
   "devDependencies": {
