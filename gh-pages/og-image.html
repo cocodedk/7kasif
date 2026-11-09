@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="robots" content="noindex">
+<title>Share picture, 1200x630: Hafte Kasif</title>
+<!--
+  Source layout for og.png. Render at exactly 1200x630:
+
+    google-chrome-stable --headless --disable-gpu --no-sandbox \
+      --window-size=1200,630 --hide-scrollbars --virtual-time-budget=8000 \
+      --screenshot=og.png "file:///abs/path/gh-pages/og-image.html"
+
+  The colours are hardcoded on purpose: a share picture must not follow the
+  viewer's colour scheme. The fonts load from Google Fonts at render time only.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bangers&family=Inter:wght@500;700&display=swap">
+<style>
+  :root {
+    --felt: #0d5d2e;
+    --felt-dark: #0a4a24;
+    --felt-light: #1a7a3e;
+    --gold: #ffd700;
+    --cream: #f5f5dc;
+    --red: #dc143c;
+    --black: #1a1a1a;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+
+  body {
+    width: 1200px;
+    height: 630px;
+    overflow: hidden;
+    font-family: "Inter", sans-serif;
+    color: var(--cream);
+    background:
+      radial-gradient(ellipse 70% 90% at 72% 48%, var(--felt-light) 0%, var(--felt) 48%, var(--felt-dark) 100%);
+  }
+
+  /* a gold rule runs round the felt, like the edge of a card table */
+  .card {
+    position: relative;
+    width: 1200px;
+    height: 630px;
+  }
+  .card::before {
+    content: "";
+    position: absolute;
+    inset: 24px;
+    border: 3px solid var(--gold);
+    border-radius: 28px;
+    opacity: 0.55;
+  }
+
+  .text {
+    position: absolute;
+    left: 88px;
+    top: 0;
+    width: 590px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  h1 {
+    margin: 0;
+    font-family: "Bangers", cursive;
+    font-weight: 400;
+    font-size: 208px;
+    line-height: 0.95;
+    letter-spacing: 0.02em;
+    color: var(--gold);
+    text-shadow: 6px 7px 0 var(--felt-dark), 6px 7px 24px rgba(0, 0, 0, 0.35);
+  }
+
+  .sub {
+    margin: 18px 0 0;
+    font-size: 36px;
+    font-weight: 700;
+    line-height: 1.2;
+  }
+
+  .tag {
+    margin: 16px 0 0;
+    font-size: 27px;
+    line-height: 1.4;
+    opacity: 0.82;
+  }
+
+  .by {
+    position: absolute;
+    left: 88px;
+    bottom: 56px;
+    font-size: 21px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--gold);
+    opacity: 0.85;
+  }
+
+  /* three sevens, fanned */
+  .fan { position: absolute; left: 700px; top: 0; width: 440px; height: 100%; }
+  .play {
+    position: absolute;
+    left: 110px;
+    top: 140px;
+    width: 220px;
+    height: 330px;
+    padding: 16px 18px;
+    background: var(--cream);
+    border-radius: 18px;
+    box-shadow: 0 14px 30px rgba(0, 0, 0, 0.4);
+    transform-origin: 50% 120%;
+    font-weight: 700;
+    line-height: 1;
+  }
+  .play .rank { font-size: 52px; }
+  .play .suit { display: block; font-size: 40px; margin-top: 4px; }
+  .play .pip {
+    position: absolute;
+    left: 0; right: 0; top: 50%;
+    transform: translateY(-50%);
+    text-align: center;
+    font-size: 150px;
+  }
+  .play.red { color: var(--red); }
+  .play.dark { color: var(--black); }
+  .play:nth-child(1) { transform: rotate(-17deg) translateX(-52px); }
+  .play:nth-child(2) { transform: rotate(-1deg); }
+  .play:nth-child(3) { transform: rotate(15deg) translateX(56px); }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="text">
+      <h1>7kasif</h1>
+      <p class="sub">Hafte Kasif &mdash; The Dirty Seven</p>
+      <p class="tag">A chaotic Danish-Persian card game, played online with friends.</p>
+    </div>
+    <p class="by">Babak Bandpey &middot; 7kasif.cocode.dk</p>
+    <div class="fan" aria-hidden="true">
+      <div class="play red"><span class="rank">7</span><span class="suit">&#9829;</span><span class="pip">&#9829;</span></div>
+      <div class="play dark"><span class="rank">7</span><span class="suit">&#9824;</span><span class="pip">&#9824;</span></div>
+      <div class="play red"><span class="rank">7</span><span class="suit">&#9830;</span><span class="pip">&#9830;</span></div>
+    </div>
+  </div>
+</body>
+</html>
